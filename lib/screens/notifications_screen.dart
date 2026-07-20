@@ -76,21 +76,7 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
-  String get _message {
-    final actorName = notification['actor_name'] as String? ?? 'Alguien';
-    switch (notification['type'] as String?) {
-      case 'like_post':
-        return '$actorName le dio like a tu publicación';
-      case 'comment_post':
-        return '$actorName comentó tu publicación';
-      case 'reply_comment':
-        return '$actorName respondió tu comentario';
-      case 'like_comment':
-        return '$actorName le dio like a tu comentario';
-      default:
-        return '$actorName interactuó contigo';
-    }
-  }
+  String get _message => NotificationService.instance.messageFor(notification);
 
   String get _relativeTime {
     final createdAt = DateTime.tryParse(

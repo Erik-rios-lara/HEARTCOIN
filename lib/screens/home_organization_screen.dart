@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/notification_service.dart';
 import '../services/org_dashboard_service.dart';
 import '../theme/app_colors.dart';
 import 'create_org_iniciativa_screen.dart';
+import 'notifications_screen.dart';
 
 /// Home del rol "organización": dashboard con resumen de actividad
 /// y evolución semanal de votos recibidos por sus campañas.
@@ -67,16 +69,30 @@ class _HomeOrganizationScreenState extends State<HomeOrganizationScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
-            _Header(
-              organizationName: organizationName,
-              onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
-              onNewInitiative: () async {
-                final created = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => const CreateOrgIniciativaScreen(),
-                  ),
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: NotificationService.instance.notificationsStream(),
+              builder: (context, snapshot) {
+                final hasUnread = (snapshot.data ?? []).any(
+                  (n) => n['is_read'] == false,
                 );
-                if (created == true && mounted) setState(() {});
+                return _Header(
+                  organizationName: organizationName,
+                  hasUnreadNotifications: hasUnread,
+                  onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+                  onNotificationsTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen(),
+                    ),
+                  ),
+                  onNewInitiative: () async {
+                    final created = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => const CreateOrgIniciativaScreen(),
+                      ),
+                    );
+                    if (created == true && mounted) setState(() {});
+                  },
+                );
               },
             ),
             const SizedBox(height: 24),
@@ -96,12 +112,16 @@ class _HomeOrganizationScreenState extends State<HomeOrganizationScreen> {
 /// ============================================================
 class _Header extends StatelessWidget {
   final String organizationName;
+  final bool hasUnreadNotifications;
   final VoidCallback onMenuTap;
+  final VoidCallback onNotificationsTap;
   final VoidCallback onNewInitiative;
 
   const _Header({
     required this.organizationName,
+    required this.hasUnreadNotifications,
     required this.onMenuTap,
+    required this.onNotificationsTap,
     required this.onNewInitiative,
   });
 
@@ -137,6 +157,33 @@ class _Header extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primarioNegro,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: onNotificationsTap,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          color: AppColors.primarioNegro,
+                          size: 24,
+                        ),
+                        if (hasUnreadNotifications)
+                          Positioned(
+                            right: -1,
+                            top: -1,
+                            child: Container(
+                              width: 9,
+                              height: 9,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primarioRojo,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],

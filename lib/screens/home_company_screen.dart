@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/company_dashboard_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import 'company_beneficios_screen.dart';
 import 'company_servicios_screen.dart';
 import 'create_beneficio_screen.dart';
+import 'notifications_screen.dart';
 
 /// Home del rol "empresa": dashboard con sus beneficios publicados
 /// y el HC que han movido (cobrado o entregado en cashback).
@@ -68,16 +70,30 @@ class _HomeCompanyScreenState extends State<HomeCompanyScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
-            _Header(
-              companyName: companyName,
-              onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
-              onNewBeneficio: () async {
-                final created = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => const CreateBeneficioScreen(),
-                  ),
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: NotificationService.instance.notificationsStream(),
+              builder: (context, snapshot) {
+                final hasUnread = (snapshot.data ?? []).any(
+                  (n) => n['is_read'] == false,
                 );
-                if (created == true && mounted) _loadStats();
+                return _Header(
+                  companyName: companyName,
+                  hasUnreadNotifications: hasUnread,
+                  onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+                  onNotificationsTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen(),
+                    ),
+                  ),
+                  onNewBeneficio: () async {
+                    final created = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => const CreateBeneficioScreen(),
+                      ),
+                    );
+                    if (created == true && mounted) _loadStats();
+                  },
+                );
               },
             ),
             const SizedBox(height: 24),
@@ -113,12 +129,16 @@ class _HomeCompanyScreenState extends State<HomeCompanyScreen> {
 /// ============================================================
 class _Header extends StatelessWidget {
   final String companyName;
+  final bool hasUnreadNotifications;
   final VoidCallback onMenuTap;
+  final VoidCallback onNotificationsTap;
   final VoidCallback onNewBeneficio;
 
   const _Header({
     required this.companyName,
+    required this.hasUnreadNotifications,
     required this.onMenuTap,
+    required this.onNotificationsTap,
     required this.onNewBeneficio,
   });
 
@@ -154,6 +174,33 @@ class _Header extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primarioNegro,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: onNotificationsTap,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          color: AppColors.primarioNegro,
+                          size: 24,
+                        ),
+                        if (hasUnreadNotifications)
+                          Positioned(
+                            right: -1,
+                            top: -1,
+                            child: Container(
+                              width: 9,
+                              height: 9,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primarioRojo,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../theme/app_colors.dart';
 import '../services/block_service.dart';
+import '../services/local_notification_service.dart';
 import '../services/notification_service.dart';
 import '../services/social_service.dart';
 import '../widgets/follow_button.dart';
@@ -30,6 +33,10 @@ class _HomePeopleScreenState extends State<HomePeopleScreen> {
   Map<String, dynamic>? _myProfile;
   Set<String> _blockedIds = {};
 
+  StreamSubscription<List<Map<String, dynamic>>>? _notificationsSub;
+  Set<String> _seenNotificationIds = {};
+  bool _notificationsBaselineSet = false;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +46,39 @@ class _HomePeopleScreenState extends State<HomePeopleScreen> {
         .order('created_at', ascending: false);
     _loadMyProfile();
     _loadBlockedIds();
+    _initLocalNotifications();
+  }
+
+  Future<void> _initLocalNotifications() async {
+    await LocalNotificationService.instance.init();
+    _notificationsSub = NotificationService.instance
+        .notificationsStream()
+        .listen(_handleNotificationsUpdate);
+  }
+
+  /// Muestra un banner del sistema solo para filas que no existían en la
+  /// última actualización (evita re-notificar avisos ya vistos y no
+  /// dispara nada retroactivo con lo que ya estaba sin leer al abrir).
+  void _handleNotificationsUpdate(List<Map<String, dynamic>> notifications) {
+    final currentIds = notifications.map((n) => n['id'] as String).toSet();
+
+    if (!_notificationsBaselineSet) {
+      _seenNotificationIds = currentIds;
+      _notificationsBaselineSet = true;
+      return;
+    }
+
+    for (final notification in notifications) {
+      final id = notification['id'] as String;
+      if (_seenNotificationIds.contains(id)) continue;
+      _seenNotificationIds.add(id);
+      if (notification['is_read'] == true) continue;
+      LocalNotificationService.instance.show(
+        id: id.hashCode,
+        title: 'HeartCoin',
+        body: NotificationService.instance.messageFor(notification),
+      );
+    }
   }
 
   Future<void> _loadBlockedIds() async {
@@ -59,6 +99,12 @@ class _HomePeopleScreenState extends State<HomePeopleScreen> {
     } catch (_) {
       // Si falla, el drawer simplemente muestra valores por defecto.
     }
+  }
+
+  @override
+  void dispose() {
+    _notificationsSub?.cancel();
+    super.dispose();
   }
 
   void _onTabTapped(int index) {

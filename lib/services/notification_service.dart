@@ -34,4 +34,21 @@ class NotificationService {
         .eq('user_id', userId)
         .eq('is_read', false);
   }
+
+  /// Texto legible para una fila de la tabla `notifications`.
+  String messageFor(Map<String, dynamic> notification) {
+    final actorName = notification['actor_name'] as String? ?? 'Alguien';
+    switch (notification['type'] as String?) {
+      case 'like_post':
+        return '$actorName le dio like a tu publicación';
+      case 'comment_post':
+        return '$actorName comentó tu publicación';
+      case 'reply_comment':
+        return '$actorName respondió tu comentario';
+      case 'like_comment':
+        return '$actorName le dio like a tu comentario';
+      default:
+        return '$actorName interactuó contigo';
+    }
+  }
 }

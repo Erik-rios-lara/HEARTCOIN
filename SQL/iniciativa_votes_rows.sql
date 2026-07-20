@@ -1,0 +1,1 @@
+INSERT INTO "public"."iniciativa_votes" ("iniciativa_id", "user_id", "created_at") VALUES ('97b75a6b-5440-4cad-ba4d-0b94025a5312', '7eef3144-3aba-4945-8b20-dcbbb2decbf1', '2026-07-02 19:06:09.933361+00'), ('af01b6ac-470d-465f-ac54-f9cea4a1df52', '7eef3144-3aba-4945-8b20-dcbbb2decbf1', '2026-07-02 19:05:56.980112+00');

@@ -1,0 +1,1 @@
+INSERT INTO "public"."comment_likes" ("comment_id", "user_id", "created_at") VALUES ('78f0c8a6-ce3f-4811-a6ac-c17da37f9aa7', 'cae18c1a-0855-4068-9d2f-966614b532fc', '2026-07-02 16:31:07.069245+00');

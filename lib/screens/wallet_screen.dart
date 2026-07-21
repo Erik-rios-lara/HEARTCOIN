@@ -12,6 +12,7 @@ import '../services/ranking_service.dart';
 import '../services/wallet_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/floating_location_card.dart';
+import '../widgets/heart_map_pin.dart';
 import '../widgets/iniciativa_widgets.dart' show AppChip;
 import 'beneficio_detail_screen.dart';
 import 'beneficio_scanner_screen.dart';
@@ -634,15 +635,11 @@ class _BeneficiosMapaTabState extends State<_BeneficiosMapaTab> {
                       (business['latitude'] as num).toDouble(),
                       (business['longitude'] as num).toDouble(),
                     ),
-                    width: 32,
-                    height: 32,
+                    width: 36,
+                    height: 36,
                     child: GestureDetector(
                       onTap: () => setState(() => _selected = business),
-                      child: const Icon(
-                        Icons.storefront,
-                        color: AppColors.secundarioAzul,
-                        size: 32,
-                      ),
+                      child: const HeartMapPin(size: 36),
                     ),
                   ),
                 if (userLocation != null)

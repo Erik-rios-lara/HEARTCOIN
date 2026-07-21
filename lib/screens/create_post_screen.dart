@@ -2,13 +2,13 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/current_location.dart';
 import '../services/media_service.dart';
 import '../theme/app_colors.dart';
+import 'select_iniciativa_screen.dart';
 
 class _PickedFile {
   final String name;
@@ -24,17 +24,10 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
-  static const _initiativeOptions = [
-    'Ninguna',
-    'Iniciativa 1',
-    'Iniciativa 2',
-    'Iniciativa 3',
-  ];
-
   final _captionController = TextEditingController();
   final _picker = ImagePicker();
 
-  String _selectedInitiative = _initiativeOptions.first;
+  Map<String, dynamic>? _selectedIniciativa;
   _PickedFile? _pickedImage;
   final List<_PickedFile> _pickedDocuments = [];
 
@@ -88,47 +81,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _addLocation() async {
     setState(() => _isFetchingLocation = true);
     try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        _showMessage('Permiso de ubicación denegado.');
-        return;
-      }
-
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _showMessage('Activa el GPS para agregar tu ubicación.');
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-        ),
-      );
-      final placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-      final placemark = placemarks.isNotEmpty ? placemarks.first : null;
-      final label = [
-        placemark?.locality,
-        placemark?.administrativeArea,
-        placemark?.country,
-      ].where((part) => part != null && part.isNotEmpty).join(', ');
-
+      final result = await captureCurrentLocation();
       if (!mounted) return;
-      setState(
-        () => _locationLabel = label.isNotEmpty ? label : 'Ubicación actual',
-      );
+      setState(() => _locationLabel = result.label ?? 'Ubicación actual');
+    } on LocationPermissionDeniedException {
+      _showMessage('Permiso de ubicación denegado.');
+    } on LocationServiceDisabledException {
+      _showMessage('Activa el GPS para agregar tu ubicación.');
     } catch (_) {
       _showMessage('No se pudo obtener tu ubicación.');
     } finally {
       if (mounted) setState(() => _isFetchingLocation = false);
     }
+  }
+
+  Future<void> _selectIniciativa() async {
+    final selected = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => const SelectIniciativaScreen()),
+    );
+    if (selected != null) setState(() => _selectedIniciativa = selected);
   }
 
   void _showMessage(String message) {
@@ -191,9 +162,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         'caption': caption,
         'image_url': imageUrl,
         'image_file_id': imageFileId,
-        'initiative_name': _selectedInitiative == _initiativeOptions.first
-            ? null
-            : _selectedInitiative,
+        'iniciativa_id': _selectedIniciativa?['id'],
+        'initiative_name': _selectedIniciativa?['title'],
         'location': _locationLabel,
         'document_urls': documentUrls,
         'document_names': documentNames,
@@ -262,27 +232,49 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.primarioBlanco,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.gris300),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedInitiative,
-                  isExpanded: true,
-                  icon: Icon(
-                    Icons.keyboard_arrow_down,
-                    color: AppColors.gris600,
-                  ),
-                  items: _initiativeOptions
-                      .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedInitiative = v);
-                  },
+            GestureDetector(
+              onTap: _selectIniciativa,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.primarioBlanco,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.gris300),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.favorite, size: 18, color: AppColors.primarioRojo),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _selectedIniciativa?['title'] as String? ??
+                            'Ninguna (opcional)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _selectedIniciativa != null
+                              ? AppColors.primarioNegro
+                              : AppColors.gris600,
+                        ),
+                      ),
+                    ),
+                    if (_selectedIniciativa != null)
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _selectedIniciativa = null),
+                        child: Icon(
+                          Icons.close,
+                          size: 18,
+                          color: AppColors.gris600,
+                        ),
+                      )
+                    else
+                      Icon(Icons.chevron_right, color: AppColors.gris600),
+                  ],
                 ),
               ),
             ),

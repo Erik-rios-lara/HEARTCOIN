@@ -9,6 +9,7 @@ import '../services/notification_service.dart';
 import '../services/social_service.dart';
 import '../widgets/follow_button.dart';
 import 'comments_sheet.dart';
+import 'iniciativa_detail_screen.dart';
 import 'notifications_screen.dart';
 import 'user_profile_screen.dart';
 
@@ -637,6 +638,8 @@ class _PostCardState extends State<_PostCard> {
     final likesCount = (post['likes_count'] as num?)?.toInt() ?? 0;
     final commentsCount = (post['comments_count'] as num?)?.toInt() ?? 0;
     final liked = _liked ?? false;
+    final iniciativaId = post['iniciativa_id'] as String?;
+    final initiativeName = post['initiative_name'] as String?;
 
     return Container(
       color: AppColors.primarioBlanco,
@@ -705,6 +708,54 @@ class _PostCardState extends State<_PostCard> {
               ],
             ),
           ),
+
+          // Etiqueta de iniciativa relacionada
+          if (iniciativaId != null && initiativeName != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => IniciativaDetailScreen(
+                      iniciativa: {'id': iniciativaId, 'title': initiativeName},
+                    ),
+                  ),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.rojoClaro1.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.favorite,
+                        size: 13,
+                        color: AppColors.primarioRojo,
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          initiativeName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primarioRojo,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           // Imagen de la publicación
           if (imageUrl != null)

@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../services/beneficio_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/mini_map.dart';
 import 'beneficio_scanner_screen.dart';
 
 /// Detalle de un beneficio: descripción completa, términos,
 /// vigencia y acceso al escáner para canjearlo.
-class BeneficioDetailScreen extends StatelessWidget {
+class BeneficioDetailScreen extends StatefulWidget {
   final Map<String, dynamic> beneficio;
   const BeneficioDetailScreen({super.key, required this.beneficio});
 
+  @override
+  State<BeneficioDetailScreen> createState() => _BeneficioDetailScreenState();
+}
+
+class _BeneficioDetailScreenState extends State<BeneficioDetailScreen> {
   static const _typeLabels = {
     'descuento': 'Descuento',
     'cashback': 'Cashback',
@@ -23,8 +30,45 @@ class BeneficioDetailScreen extends StatelessWidget {
     'otro': Icons.card_giftcard,
   };
 
+  List<Map<String, dynamic>> _otherBeneficios = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOtherBeneficios();
+  }
+
+  Future<void> _loadOtherBeneficios() async {
+    try {
+      final beneficios = await BeneficioService.instance
+          .fetchActiveBeneficios();
+      if (!mounted) return;
+      setState(
+        () => _otherBeneficios = beneficios
+            .where(
+              (b) =>
+                  b['id'] != widget.beneficio['id'] &&
+                  b['latitude'] != null &&
+                  b['longitude'] != null,
+            )
+            .toList(),
+      );
+    } catch (_) {
+      // Sin otros beneficios cargados, el mapa simplemente muestra solo este.
+    }
+  }
+
+  void _openOtherBeneficio(Map<String, dynamic> beneficio) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => BeneficioDetailScreen(beneficio: beneficio),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final beneficio = widget.beneficio;
     final benefitType = beneficio['benefit_type'] as String? ?? 'otro';
     final title = beneficio['title'] as String? ?? 'Beneficio';
     final companyName = beneficio['company_name'] as String?;
@@ -40,6 +84,9 @@ class BeneficioDetailScreen extends StatelessWidget {
     final expiresAt = DateTime.tryParse(
       beneficio['expires_at'] as String? ?? '',
     );
+    final latitude = (beneficio['latitude'] as num?)?.toDouble();
+    final longitude = (beneficio['longitude'] as num?)?.toDouble();
+    final location = beneficio['location'] as String?;
 
     return Scaffold(
       backgroundColor: AppColors.gris100,
@@ -158,6 +205,18 @@ class BeneficioDetailScreen extends StatelessWidget {
                 height: 1.5,
                 color: AppColors.gris700,
               ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          if (latitude != null && longitude != null) ...[
+            const _SectionLabel('Ubicación'),
+            MiniMap(
+              latitude: latitude,
+              longitude: longitude,
+              label: location,
+              otherLocations: _otherBeneficios,
+              onTapOtherLocation: _openOtherBeneficio,
             ),
             const SizedBox(height: 20),
           ],

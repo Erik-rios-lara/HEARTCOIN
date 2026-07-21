@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/beneficio_service.dart';
 import '../theme/app_colors.dart';
+import 'beneficio_detail_screen.dart';
 import 'beneficio_qr_screen.dart';
 import 'create_beneficio_screen.dart';
 
@@ -116,129 +117,139 @@ class _BeneficioCard extends StatelessWidget {
         ? '+$hcReward HC por canje'
         : '$hcCost HC por canje';
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primarioBlanco,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Material(
+      color: AppColors.primarioBlanco,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BeneficioDetailScreen(beneficio: beneficio),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                _typeIcons[benefitType] ?? Icons.card_giftcard,
-                color: AppColors.primarioRojo,
-                size: 18,
+              Row(
+                children: [
+                  Icon(
+                    _typeIcons[benefitType] ?? Icons.card_giftcard,
+                    color: AppColors.primarioRojo,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _typeLabels[benefitType] ?? benefitType,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primarioRojo,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          (isActive
+                                  ? AppColors.secundarioVerde
+                                  : AppColors.gris600)
+                              .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      isActive ? 'Activo' : 'Inactivo',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isActive
+                            ? AppColors.secundarioVerde
+                            : AppColors.gris600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
+              const SizedBox(height: 10),
               Text(
-                _typeLabels[benefitType] ?? benefitType,
-                style: const TextStyle(
-                  fontSize: 12,
+                title,
+                style: TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primarioRojo,
+                  color: AppColors.primarioNegro,
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      (isActive ? AppColors.secundarioVerde : AppColors.gris600)
-                          .withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  isActive ? 'Activo' : 'Inactivo',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isActive
-                        ? AppColors.secundarioVerde
-                        : AppColors.gris600,
-                  ),
+              const SizedBox(height: 6),
+              Text(
+                hcLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.gris700,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primarioNegro,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            hcLabel,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.gris700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            maxRedemptions != null
-                ? '$redemptionsCount / $maxRedemptions canjes'
-                : '$redemptionsCount canjes',
-            style: TextStyle(fontSize: 12, color: AppColors.gris600),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    await BeneficioService.instance.setStatus(
-                      id!,
-                      isActive ? 'inactivo' : 'activo',
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.gris700,
-                    side: BorderSide(color: AppColors.gris300),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(isActive ? 'Desactivar' : 'Activar'),
-                ),
+              const SizedBox(height: 4),
+              Text(
+                maxRedemptions != null
+                    ? '$redemptionsCount / $maxRedemptions canjes'
+                    : '$redemptionsCount canjes',
+                style: TextStyle(fontSize: 12, color: AppColors.gris600),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: id == null
-                      ? null
-                      : () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BeneficioQrScreen(
-                              beneficioId: id,
-                              beneficioTitle: title,
-                            ),
-                          ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        await BeneficioService.instance.setStatus(
+                          id!,
+                          isActive ? 'inactivo' : 'activo',
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.gris700,
+                        side: BorderSide(color: AppColors.gris300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                  icon: const Icon(Icons.qr_code, size: 18),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primarioRojo,
-                    side: const BorderSide(color: AppColors.primarioRojo),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(isActive ? 'Desactivar' : 'Activar'),
                     ),
                   ),
-                  label: const Text('QR'),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: id == null
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => BeneficioQrScreen(
+                                  beneficioId: id,
+                                  beneficioTitle: title,
+                                ),
+                              ),
+                            ),
+                      icon: const Icon(Icons.qr_code, size: 18),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primarioRojo,
+                        side: const BorderSide(color: AppColors.primarioRojo),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      label: const Text('QR'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

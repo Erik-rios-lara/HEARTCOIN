@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/servicio_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/mini_map.dart';
 import 'beneficio_scanner_screen.dart';
 import 'servicio_qr_screen.dart';
 
@@ -21,12 +22,41 @@ class _ServicioDetailScreenState extends State<ServicioDetailScreen> {
   late Map<String, dynamic> _servicio;
   bool _isUpdating = false;
   bool? _hasRedeemed;
+  List<Map<String, dynamic>> _otherServicios = [];
 
   @override
   void initState() {
     super.initState();
     _servicio = widget.servicio;
     if (!_isOwner) _loadRedeemedState();
+    _loadOtherServicios();
+  }
+
+  Future<void> _loadOtherServicios() async {
+    try {
+      final servicios = await ServicioService.instance.fetchActiveServicios();
+      if (!mounted) return;
+      setState(
+        () => _otherServicios = servicios
+            .where(
+              (s) =>
+                  s['id'] != _servicio['id'] &&
+                  s['latitude'] != null &&
+                  s['longitude'] != null,
+            )
+            .toList(),
+      );
+    } catch (_) {
+      // Sin otros servicios cargados, el mapa simplemente muestra solo este.
+    }
+  }
+
+  void _openOtherServicio(Map<String, dynamic> servicio) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ServicioDetailScreen(servicio: servicio),
+      ),
+    );
   }
 
   bool get _isOwner {
@@ -93,6 +123,9 @@ class _ServicioDetailScreenState extends State<ServicioDetailScreen> {
     final createdAt = DateTime.tryParse(
       _servicio['created_at'] as String? ?? '',
     );
+    final latitude = (_servicio['latitude'] as num?)?.toDouble();
+    final longitude = (_servicio['longitude'] as num?)?.toDouble();
+    final location = _servicio['location'] as String?;
 
     return Scaffold(
       backgroundColor: AppColors.gris100,
@@ -224,6 +257,18 @@ class _ServicioDetailScreenState extends State<ServicioDetailScreen> {
                 height: 1.5,
                 color: AppColors.gris800,
               ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          if (latitude != null && longitude != null) ...[
+            const _SectionLabel('Ubicación'),
+            MiniMap(
+              latitude: latitude,
+              longitude: longitude,
+              label: location,
+              otherLocations: _otherServicios,
+              onTapOtherLocation: _openOtherServicio,
             ),
             const SizedBox(height: 20),
           ],

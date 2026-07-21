@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/save_button.dart';
 import 'checkin_scanner_screen.dart';
+import 'iniciativa_ahorro_detail_screen.dart';
 
 enum _DetailTab { detalles, comentarios, presupuesto }
 
@@ -123,6 +124,27 @@ class _IniciativaDetailScreenState extends State<IniciativaDetailScreen> {
               iniciativa['verification_method'] as String?;
           final votesCount = (iniciativa['votes_count'] as num?)?.toInt() ?? 0;
           final voted = _hasVoted ?? false;
+
+          if (category == 'Ahorro') {
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Header(
+                    iniciativaId: iniciativa['id'] as String,
+                    statusLabel: 'Iniciativa de ahorro',
+                    title: title,
+                    category: category,
+                    categoryIcon: _iconForCategory(category),
+                    votesCount: votesCount,
+                    organizationName: organizationName,
+                    organizationId: organizationId,
+                  ),
+                  IniciativaAhorroDetailBody(iniciativa: iniciativa),
+                ],
+              ),
+            );
+          }
 
           return SingleChildScrollView(
             child: Column(

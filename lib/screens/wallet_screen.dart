@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/current_location.dart';
+import '../services/location_preference_controller.dart';
 import '../services/ranking_service.dart';
 import '../services/wallet_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/iniciativa_widgets.dart' show AppChip;
 import 'beneficio_detail_screen.dart';
 import 'beneficio_scanner_screen.dart';
 
@@ -158,9 +162,14 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-class _BeneficiosTab extends StatelessWidget {
+class _BeneficiosTab extends StatefulWidget {
   const _BeneficiosTab();
 
+  @override
+  State<_BeneficiosTab> createState() => _BeneficiosTabState();
+}
+
+class _BeneficiosTabState extends State<_BeneficiosTab> {
   static const _typeLabels = {
     'descuento': 'Descuento',
     'cashback': 'Cashback',
@@ -174,6 +183,40 @@ class _BeneficiosTab extends StatelessWidget {
     'beca': Icons.school_outlined,
     'otro': Icons.card_giftcard,
   };
+
+  bool _sortCercanos = false;
+  LocationCaptureResult? _userLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    if (!LocationPreferenceController.instance.enabled.value) return;
+    try {
+      final result = await captureCurrentLocation();
+      if (mounted) setState(() => _userLocation = result);
+    } catch (_) {
+      // Sin ubicación disponible: "Cercanos" simplemente no se podrá calcular.
+    }
+  }
+
+  double _distanceTo(Map<String, dynamic> beneficio) {
+    final userLocation = _userLocation;
+    final lat = (beneficio['latitude'] as num?)?.toDouble();
+    final lng = (beneficio['longitude'] as num?)?.toDouble();
+    if (userLocation == null || lat == null || lng == null) {
+      return double.infinity;
+    }
+    return Geolocator.distanceBetween(
+      userLocation.latitude,
+      userLocation.longitude,
+      lat,
+      lng,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,122 +232,184 @@ class _BeneficiosTab extends StatelessWidget {
         final beneficios = (snapshot.data ?? [])
             .where((b) => b['status'] == 'activo')
             .toList();
-
-        if (beneficios.isEmpty) {
-          return Center(
-            child: Text(
-              'No hay beneficios disponibles por ahora.',
-              style: TextStyle(color: AppColors.gris600),
-            ),
-          );
+        if (_sortCercanos) {
+          beneficios.sort((a, b) => _distanceTo(a).compareTo(_distanceTo(b)));
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          itemCount: beneficios.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final beneficio = beneficios[index];
-            final benefitType = beneficio['benefit_type'] as String? ?? 'otro';
-            final title = beneficio['title'] as String? ?? 'Beneficio';
-            final companyName = beneficio['company_name'] as String?;
-            final description = beneficio['description'] as String?;
-            final hcCost = (beneficio['hc_cost'] as num?)?.toInt();
-            final hcReward = (beneficio['hc_reward'] as num?)?.toInt();
-            final hcLabel = benefitType == 'cashback'
-                ? '+$hcReward HC'
-                : '$hcCost HC';
-
-            return Material(
-              color: AppColors.primarioBlanco,
-              borderRadius: BorderRadius.circular(16),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => BeneficioDetailScreen(beneficio: beneficio),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  AppChip(
+                    label: 'Recientes',
+                    selected: !_sortCercanos,
+                    onTap: () => setState(() => _sortCercanos = false),
                   ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            _typeIcons[benefitType] ?? Icons.card_giftcard,
-                            size: 16,
-                            color: AppColors.primarioRojo,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _typeLabels[benefitType] ?? benefitType,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primarioRojo,
+                  const SizedBox(width: 8),
+                  AppChip(
+                    label: 'Cercanos',
+                    selected: _sortCercanos,
+                    onTap: () => setState(() => _sortCercanos = true),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: beneficios.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No hay beneficios disponibles por ahora.',
+                        style: TextStyle(color: AppColors.gris600),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                      itemCount: beneficios.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final beneficio = beneficios[index];
+                        final benefitType =
+                            beneficio['benefit_type'] as String? ?? 'otro';
+                        final title =
+                            beneficio['title'] as String? ?? 'Beneficio';
+                        final companyName =
+                            beneficio['company_name'] as String?;
+                        final description = beneficio['description'] as String?;
+                        final hcCost = (beneficio['hc_cost'] as num?)?.toInt();
+                        final hcReward = (beneficio['hc_reward'] as num?)
+                            ?.toInt();
+                        final hcLabel = benefitType == 'cashback'
+                            ? '+$hcReward HC'
+                            : '$hcCost HC';
+                        final location = beneficio['location'] as String?;
+
+                        return Material(
+                          color: AppColors.primarioBlanco,
+                          borderRadius: BorderRadius.circular(16),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    BeneficioDetailScreen(beneficio: beneficio),
+                              ),
                             ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.gris200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              hcLabel,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primarioNegro,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _typeIcons[benefitType] ??
+                                            Icons.card_giftcard,
+                                        size: 16,
+                                        color: AppColors.primarioRojo,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _typeLabels[benefitType] ?? benefitType,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primarioRojo,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.gris200,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          hcLabel,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primarioNegro,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    title,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primarioNegro,
+                                    ),
+                                  ),
+                                  if (companyName != null &&
+                                      companyName.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      companyName,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.gris700,
+                                      ),
+                                    ),
+                                  ],
+                                  if (location != null &&
+                                      location.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.location_on,
+                                          size: 13,
+                                          color: AppColors.gris600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            location,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.gris600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (description != null &&
+                                      description.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      description,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.gris600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primarioNegro,
-                        ),
-                      ),
-                      if (companyName != null && companyName.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          companyName,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.gris700,
-                          ),
-                        ),
-                      ],
-                      if (description != null && description.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.gris600,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
+                        );
+                      },
+                    ),
+            ),
+          ],
         );
       },
     );

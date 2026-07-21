@@ -25,6 +25,14 @@ class BeneficioService {
         .maybeSingle();
   }
 
+  Future<List<Map<String, dynamic>>> fetchActiveBeneficios() async {
+    final rows = await _client
+        .from('beneficios')
+        .select()
+        .eq('status', 'activo');
+    return (rows as List).cast<Map<String, dynamic>>();
+  }
+
   Future<void> createBeneficio({
     required String title,
     required String description,
@@ -34,6 +42,9 @@ class BeneficioService {
     String? terms,
     int? maxRedemptions,
     DateTime? expiresAt,
+    String? location,
+    double? latitude,
+    double? longitude,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw StateError('No hay sesión activa.');
@@ -48,6 +59,9 @@ class BeneficioService {
       'terms': terms,
       'max_redemptions': maxRedemptions,
       'expires_at': expiresAt?.toIso8601String(),
+      'location': location,
+      'latitude': latitude,
+      'longitude': longitude,
     });
   }
 

@@ -48,6 +48,9 @@ class ServicioService {
     int? hcCost,
     int? hcReward,
     int? maxRedemptions,
+    String? location,
+    double? latitude,
+    double? longitude,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw StateError('No hay sesión activa.');
@@ -61,6 +64,9 @@ class ServicioService {
       'hc_cost': hcCost,
       'hc_reward': hcReward,
       'max_redemptions': maxRedemptions,
+      'location': location,
+      'latitude': latitude,
+      'longitude': longitude,
     });
   }
 

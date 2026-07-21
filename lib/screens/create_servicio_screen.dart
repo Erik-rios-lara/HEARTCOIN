@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../services/current_location.dart';
 import '../services/servicio_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/location_capture_field.dart';
 
 const _categoryOptions = [
   'Consultoría',
@@ -33,6 +35,7 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
   final _descriptionController = TextEditingController();
   final _hcAmountController = TextEditingController();
   final _maxRedemptionsController = TextEditingController();
+  LocationCaptureResult? _location;
 
   bool get _isCashback => _pricingType == 'cashback';
 
@@ -80,6 +83,9 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
         hcCost: _isCashback ? null : hcAmount,
         hcReward: _isCashback ? hcAmount : null,
         maxRedemptions: maxRedemptions,
+        location: _location?.label,
+        latitude: _location?.latitude,
+        longitude: _location?.longitude,
       );
 
       if (!mounted) return;
@@ -191,6 +197,12 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
             controller: _maxRedemptionsController,
             hint: 'Opcional, ej. 50',
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+
+          const _FieldLabel('Ubicación (opcional)'),
+          LocationCaptureField(
+            onChanged: (result) => setState(() => _location = result),
           ),
           const SizedBox(height: 28),
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../services/beneficio_service.dart';
+import '../services/current_location.dart';
 import '../theme/app_colors.dart';
+import '../widgets/location_capture_field.dart';
 
 class _BenefitTypeOption {
   final String key;
@@ -34,6 +36,7 @@ class _CreateBeneficioScreenState extends State<CreateBeneficioScreen> {
   final _hcAmountController = TextEditingController();
   final _maxRedemptionsController = TextEditingController();
   DateTime? _expiresAt;
+  LocationCaptureResult? _location;
 
   bool get _isCashback => _benefitType == 'cashback';
 
@@ -106,6 +109,9 @@ class _CreateBeneficioScreenState extends State<CreateBeneficioScreen> {
             : _termsController.text.trim(),
         maxRedemptions: maxRedemptions,
         expiresAt: _expiresAt,
+        location: _location?.label,
+        latitude: _location?.latitude,
+        longitude: _location?.longitude,
       );
 
       if (!mounted) return;
@@ -222,6 +228,12 @@ class _CreateBeneficioScreenState extends State<CreateBeneficioScreen> {
 
           const _FieldLabel('Fecha de vencimiento'),
           _DateField(date: _expiresAt, onTap: _pickExpiresAt),
+          const SizedBox(height: 16),
+
+          const _FieldLabel('Ubicación (opcional)'),
+          LocationCaptureField(
+            onChanged: (result) => setState(() => _location = result),
+          ),
           const SizedBox(height: 28),
 
           SizedBox(

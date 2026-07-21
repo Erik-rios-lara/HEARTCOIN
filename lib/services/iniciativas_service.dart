@@ -42,4 +42,11 @@ class IniciativasService {
       rethrow;
     }
   }
+
+  Future<void> updateCurrentAmount(String iniciativaId, double amount) async {
+    await _client
+        .from('iniciativas')
+        .update({'current_amount': amount})
+        .eq('id', iniciativaId);
+  }
 }

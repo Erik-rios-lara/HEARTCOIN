@@ -99,6 +99,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final servicios = await ServicioService.instance.fetchActiveServicios(
         search: _searchController.text.trim(),
       );
+      _applySort(servicios);
       if (!mounted) return;
       setState(() => _servicios = servicios);
     } finally {
@@ -176,7 +177,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _onSortSelected(IniciativaSortOption sort) {
     setState(() => _sort = sort);
-    _applySort(_iniciativas);
+    _applySort(_isServicios ? _servicios : _iniciativas);
     setState(() {});
   }
 
@@ -297,43 +298,42 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             const SizedBox(height: 12),
 
-            if (!_isServicios) ...[
-              SizedBox(
-                height: 36,
-                child: IniciativaSortChips(
-                  selected: _sort,
-                  onSelected: _onSortSelected,
-                  scrollable: true,
-                ),
+            SizedBox(
+              height: 36,
+              child: IniciativaSortChips(
+                selected: _sort,
+                onSelected: _onSortSelected,
+                scrollable: true,
               ),
-              const SizedBox(height: 20),
+            ),
+            const SizedBox(height: 20),
 
+            if (!_isServicios) ...[
               const _DecideBanner(),
               const SizedBox(height: 20),
+            ],
 
-              Row(
-                children: [
-                  const Icon(
-                    Icons.location_on,
-                    color: AppColors.primarioRojo,
-                    size: 18,
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  color: AppColors.primarioRojo,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _locationLabel != null
+                      ? 'Cerca de ti · $_locationLabel'
+                      : 'Cerca de ti',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primarioNegro,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _locationLabel != null
-                        ? 'Cerca de ti · $_locationLabel'
-                        : 'Cerca de ti',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primarioNegro,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ] else
-              const SizedBox(height: 8),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
             if (_isLoading)
               const Padding(
@@ -514,6 +514,7 @@ class _ServicioCard extends StatelessWidget {
     final hcCost = (servicio['hc_cost'] as num?)?.toInt();
     final hcReward = (servicio['hc_reward'] as num?)?.toInt();
     final hcLabel = isCashback ? '+$hcReward HC' : '$hcCost HC';
+    final location = servicio['location'] as String?;
 
     return Material(
       color: AppColors.primarioBlanco,
@@ -597,6 +598,27 @@ class _ServicioCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           color: AppColors.gris700,
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (location != null && location.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      size: 13,
+                      color: AppColors.gris600,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: AppColors.gris600),
                       ),
                     ),
                   ],

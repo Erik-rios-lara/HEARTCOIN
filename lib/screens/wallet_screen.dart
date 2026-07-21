@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/beneficio_service.dart';
 import '../services/current_location.dart';
 import '../services/location_preference_controller.dart';
 import '../services/ranking_service.dart';
 import '../services/wallet_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/floating_location_card.dart';
 import '../widgets/iniciativa_widgets.dart' show AppChip;
 import 'beneficio_detail_screen.dart';
 import 'beneficio_scanner_screen.dart';
@@ -28,7 +32,7 @@ class _WalletScreenState extends State<WalletScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -71,8 +75,11 @@ class _WalletScreenState extends State<WalletScreen>
               labelColor: AppColors.primarioRojo,
               unselectedLabelColor: AppColors.gris600,
               indicatorColor: AppColors.primarioRojo,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               tabs: const [
                 Tab(text: 'Beneficios'),
+                Tab(text: 'Mapa'),
                 Tab(text: 'Historial'),
                 Tab(text: 'Ranking'),
               ],
@@ -83,6 +90,7 @@ class _WalletScreenState extends State<WalletScreen>
               controller: _tabController,
               children: const [
                 _BeneficiosTab(),
+                _BeneficiosMapaTab(),
                 _HistorialTab(),
                 _RankingTab(),
               ],
@@ -413,6 +421,278 @@ class _BeneficiosTabState extends State<_BeneficiosTab> {
         );
       },
     );
+  }
+}
+
+/// Mapa con todos los beneficios activos que tienen ubicación
+/// registrada, centrado en la posición actual del usuario si está
+/// disponible.
+class _BeneficiosMapaTab extends StatefulWidget {
+  const _BeneficiosMapaTab();
+
+  @override
+  State<_BeneficiosMapaTab> createState() => _BeneficiosMapaTabState();
+}
+
+class _BeneficiosMapaTabState extends State<_BeneficiosMapaTab> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _businesses = [];
+  LocationCaptureResult? _userLocation;
+  Map<String, dynamic>? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    await Future.wait([_loadBeneficios(), _loadLocation()]);
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _loadBeneficios() async {
+    try {
+      final beneficios = await BeneficioService.instance
+          .fetchActiveBeneficios();
+      final withLocation = beneficios
+          .where((b) => b['latitude'] != null && b['longitude'] != null)
+          .toList();
+      if (!mounted) return;
+      setState(() => _businesses = _groupByBusiness(withLocation));
+    } catch (_) {
+      // Sin beneficios cargados, el mapa simplemente se queda vacío.
+    }
+  }
+
+  /// Un punto en el mapa representa un negocio (empresa + ubicación),
+  /// no un beneficio individual: si una empresa publicó varios
+  /// beneficios en el mismo lugar, se agrupan en un solo pin.
+  List<Map<String, dynamic>> _groupByBusiness(
+    List<Map<String, dynamic>> beneficios,
+  ) {
+    final groups = <String, Map<String, dynamic>>{};
+    for (final beneficio in beneficios) {
+      final lat = (beneficio['latitude'] as num).toDouble();
+      final lng = (beneficio['longitude'] as num).toDouble();
+      final key =
+          '${beneficio['company_id']}_${lat.toStringAsFixed(5)}_${lng.toStringAsFixed(5)}';
+      final group = groups.putIfAbsent(
+        key,
+        () => {
+          'company_name': beneficio['company_name'] ?? 'Negocio',
+          'location': beneficio['location'],
+          'latitude': lat,
+          'longitude': lng,
+          'beneficios': <Map<String, dynamic>>[],
+        },
+      );
+      (group['beneficios'] as List<Map<String, dynamic>>).add(beneficio);
+    }
+    return groups.values.toList();
+  }
+
+  Future<void> _loadLocation() async {
+    if (!LocationPreferenceController.instance.enabled.value) return;
+    try {
+      final result = await captureCurrentLocation();
+      if (mounted) setState(() => _userLocation = result);
+    } catch (_) {
+      // Sin ubicación disponible, el mapa se centra en los beneficios.
+    }
+  }
+
+  void _openBeneficio(Map<String, dynamic> beneficio) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BeneficioDetailScreen(beneficio: beneficio),
+      ),
+    );
+  }
+
+  void _showBusinessBeneficios(Map<String, dynamic> business) {
+    setState(() => _selected = null);
+    final beneficios = (business['beneficios'] as List)
+        .cast<Map<String, dynamic>>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.primarioBlanco,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                business['company_name'] as String,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primarioNegro,
+                ),
+              ),
+              if ((business['location'] as String?)?.isNotEmpty == true) ...[
+                const SizedBox(height: 4),
+                Text(
+                  business['location'] as String,
+                  style: TextStyle(fontSize: 13, color: AppColors.gris600),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: beneficios.length,
+                  separatorBuilder: (_, _) =>
+                      Divider(height: 1, color: AppColors.gris200),
+                  itemBuilder: (context, index) {
+                    final beneficio = beneficios[index];
+                    final isCashback = beneficio['benefit_type'] == 'cashback';
+                    final hcCost = (beneficio['hc_cost'] as num?)?.toInt();
+                    final hcReward = (beneficio['hc_reward'] as num?)?.toInt();
+                    final hcLabel = isCashback ? '+$hcReward HC' : '$hcCost HC';
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(
+                        Icons.card_giftcard,
+                        color: AppColors.primarioRojo,
+                      ),
+                      title: Text(
+                        beneficio['title'] as String? ?? 'Beneficio',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primarioNegro,
+                        ),
+                      ),
+                      subtitle: Text(hcLabel),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        _openBeneficio(beneficio);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primarioRojo),
+      );
+    }
+
+    if (_businesses.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Ningún beneficio activo tiene ubicación registrada todavía.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.gris600),
+          ),
+        ),
+      );
+    }
+
+    final userLocation = _userLocation;
+    final center = userLocation != null
+        ? LatLng(userLocation.latitude, userLocation.longitude)
+        : LatLng(
+            (_businesses.first['latitude'] as num).toDouble(),
+            (_businesses.first['longitude'] as num).toDouble(),
+          );
+
+    return Stack(
+      children: [
+        FlutterMap(
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: userLocation != null ? 13 : 11,
+            onTap: (_, _) => setState(() => _selected = null),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.heartcoin',
+            ),
+            MarkerLayer(
+              markers: [
+                for (final business in _businesses)
+                  Marker(
+                    point: LatLng(
+                      (business['latitude'] as num).toDouble(),
+                      (business['longitude'] as num).toDouble(),
+                    ),
+                    width: 32,
+                    height: 32,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selected = business),
+                      child: const Icon(
+                        Icons.storefront,
+                        color: AppColors.secundarioAzul,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                if (userLocation != null)
+                  Marker(
+                    point: center,
+                    width: 22,
+                    height: 22,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primarioRojo,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        Positioned(
+          right: 8,
+          bottom: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            color: Colors.white.withValues(alpha: 0.8),
+            child: const Text(
+              '© OpenStreetMap contributors',
+              style: TextStyle(fontSize: 11, color: Colors.black87),
+            ),
+          ),
+        ),
+        if (_selected != null)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: FloatingLocationCard(
+              item: {'title': _businessCardTitle(_selected!)},
+              onDismiss: () => setState(() => _selected = null),
+              onTapDetail: () => _showBusinessBeneficios(_selected!),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _businessCardTitle(Map<String, dynamic> business) {
+    final name = business['company_name'] as String;
+    final count = (business['beneficios'] as List).length;
+    return count > 1 ? '$name · $count beneficios' : name;
   }
 }
 

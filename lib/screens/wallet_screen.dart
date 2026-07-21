@@ -625,7 +625,7 @@ class _BeneficiosMapaTabState extends State<_BeneficiosMapaTab> {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.heartcoin',
+              userAgentPackageName: 'com.theoriginallab.heartcoin',
             ),
             MarkerLayer(
               markers: [

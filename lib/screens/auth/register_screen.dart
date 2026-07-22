@@ -43,8 +43,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _mainGoal = 'Responsabilidad Social Empresarial (RSE)';
 
   static const _primary = Color(0xFFEC324C);
-  static const _textColor = Color(0xFF58585A);
-  static const _hintColor = Color(0xFF9E9E9E);
+  static const _cardColor = Color(0xFF171717);
+  static const _textColor = Color(0xFFB0B0B0);
+  static const _hintColor = Color(0xFF8A8A8A);
 
   // Debe coincidir exactamente con el check constraint de
   // personal_profiles.profile_type en Supabase.
@@ -259,6 +260,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
+      backgroundColor: _cardColor,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -319,9 +321,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
 
-                // Título sobre la imagen
+                const Spacer(),
+
+                // Título sobre la imagen, pegado al borde de la tarjeta
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -347,17 +351,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
 
-                const Spacer(),
-
-                // Tarjeta inferior (scrollable: el formulario es largo).
-                // Usa el espacio restante de la Column (que ya se ajusta
-                // al abrir el teclado) en vez de un % fijo de la altura
-                // total de pantalla, que ignoraba el teclado y provocaba
-                // overflow.
-                Expanded(
+                // Tarjeta inferior: llega exactamente a la mitad de la
+                // pantalla (igual que en login), sin importar la altura
+                // de la imagen de fondo. El formulario es largo, así que
+                // se desplaza dentro de ese espacio fijo con
+                // SingleChildScrollView (también cubre cuando se abre el
+                // teclado).
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
                   child: Container(
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: _cardColor,
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(32),
                       ),
@@ -534,7 +538,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 elevation: 4,
                                 shadowColor: _primary.withValues(alpha: 0.35),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
+                                  borderRadius: BorderRadius.circular(28),
                                 ),
                               ),
                               child: _isLoading
@@ -628,7 +632,7 @@ class _RoleTabSelector extends StatelessWidget {
           height: 48,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F3F3),
+            color: const Color(0xFF262626),
             borderRadius: BorderRadius.circular(28),
           ),
           child: Stack(
@@ -693,9 +697,9 @@ class _InputField extends StatelessWidget {
   final Widget? suffix;
   final int maxLines;
 
-  static const _borderColor = Color(0xFFE9E9E9);
-  static const _labelColor = Color(0xFF9E9E9E);
-  static const _textColor = Color(0xFF171717);
+  static const _fillColor = Color(0xFF262626);
+  static const _labelColor = Color(0xFFB0B0B0);
+  static const _hintColor = Color(0xFF7A7A7A);
 
   const _InputField({
     required this.controller,
@@ -710,32 +714,46 @@ class _InputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      maxLines: obscureText ? 1 : maxLines,
-      style: const TextStyle(fontSize: 15, color: _textColor),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: const TextStyle(fontSize: 13, color: _labelColor),
-        hintStyle: const TextStyle(fontSize: 15, color: _labelColor),
-        suffixIcon: suffix,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, color: _labelColor)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          maxLines: obscureText ? 1 : maxLines,
+          style: const TextStyle(fontSize: 15, color: Colors.white),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(fontSize: 15, color: _hintColor),
+            suffixIcon: suffix,
+            filled: true,
+            fillColor: _fillColor,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFFEC324C),
+                width: 1.5,
+              ),
+            ),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _borderColor, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFEC324C), width: 1.5),
-        ),
-      ),
+      ],
     );
   }
 }
@@ -749,9 +767,8 @@ class _DropdownField extends StatelessWidget {
   final List<String> options;
   final ValueChanged<String> onChanged;
 
-  static const _borderColor = Color(0xFFE9E9E9);
-  static const _labelColor = Color(0xFF9E9E9E);
-  static const _textColor = Color(0xFF171717);
+  static const _fillColor = Color(0xFF262626);
+  static const _labelColor = Color(0xFFB0B0B0);
 
   const _DropdownField({
     required this.label,
@@ -762,33 +779,48 @@ class _DropdownField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      isExpanded: true,
-      style: const TextStyle(fontSize: 15, color: _textColor),
-      icon: const Icon(Icons.keyboard_arrow_down, color: _labelColor),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 13, color: _labelColor),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, color: _labelColor)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          isExpanded: true,
+          dropdownColor: _fillColor,
+          style: const TextStyle(fontSize: 15, color: Colors.white),
+          icon: const Icon(Icons.keyboard_arrow_down, color: _labelColor),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: _fillColor,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFFEC324C),
+                width: 1.5,
+              ),
+            ),
+          ),
+          items: options
+              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _borderColor, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFEC324C), width: 1.5),
-        ),
-      ),
-      items: options
-          .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-          .toList(),
-      onChanged: (v) {
-        if (v != null) onChanged(v);
-      },
+      ],
     );
   }
 }

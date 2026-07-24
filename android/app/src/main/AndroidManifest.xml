@@ -7,6 +7,9 @@
         android:label="heartcoin"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBr1CWa9T3Ek8Z1LoXqrVnwuPnsrV5qyws" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

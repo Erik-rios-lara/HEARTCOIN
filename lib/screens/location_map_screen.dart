@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/floating_location_card.dart';
+import '../widgets/map_dark_style.dart';
+import '../widgets/map_marker_icons.dart';
 
-/// Mapa a pantalla completa (interactivo) para una ubicación, con
-/// opcionalmente otros lugares del mismo tipo (otros beneficios u
-/// otros servicios) marcados alrededor.
+/// Mapa a pantalla completa (interactivo, Google Maps) para una
+/// ubicación, con opcionalmente otros lugares del mismo tipo (otros
+/// beneficios u otros servicios) marcados alrededor.
 class LocationMapScreen extends StatefulWidget {
   final double latitude;
   final double longitude;
   final String? label;
 
+  /// Estilo de mapa oscuro (Google Maps) en vez del claro por defecto.
+  final bool dark;
+
   /// Otros beneficios/servicios (mismo tipo que el que se está viendo)
-  /// con `latitude`/`longitude`/`title` propios.
+  /// con `id`/`latitude`/`longitude`/`title` propios.
   final List<Map<String, dynamic>> otherLocations;
   final ValueChanged<Map<String, dynamic>>? onTapOtherLocation;
 
@@ -23,6 +27,7 @@ class LocationMapScreen extends StatefulWidget {
     required this.latitude,
     required this.longitude,
     this.label,
+    this.dark = false,
     this.otherLocations = const [],
     this.onTapOtherLocation,
   });
@@ -33,6 +38,30 @@ class LocationMapScreen extends StatefulWidget {
 
 class _LocationMapScreenState extends State<LocationMapScreen> {
   Map<String, dynamic>? _selected;
+  BitmapDescriptor? _mainIcon;
+  BitmapDescriptor? _otherIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIcons();
+  }
+
+  Future<void> _loadIcons() async {
+    final mainColor = widget.dark ? Colors.white : AppColors.primarioRojo;
+    final mainHeart = widget.dark ? AppColors.primarioNegro : Colors.white;
+    final otherColor = widget.dark ? Colors.white70 : AppColors.secundarioAzul;
+
+    final results = await Future.wait([
+      heartPinBitmap(color: mainColor, heartColor: mainHeart, size: 52),
+      heartPinBitmap(color: otherColor, heartColor: Colors.white, size: 40),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _mainIcon = results[0];
+      _otherIcon = results[1];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,89 +73,67 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
               (item['longitude'] as num?) != null,
         )
         .toList();
+    final dark = widget.dark;
+    final mainIcon = _mainIcon;
+    final otherIcon = _otherIcon;
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.primarioBlanco,
-        foregroundColor: AppColors.primarioNegro,
+        backgroundColor: dark
+            ? AppColors.primarioNegro
+            : AppColors.primarioBlanco,
+        foregroundColor: dark ? Colors.white : AppColors.primarioNegro,
         elevation: 0,
         title: Text(widget.label ?? 'Ubicación'),
       ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            options: MapOptions(
-              initialCenter: point,
-              initialZoom: 15,
-              onTap: (_, _) => setState(() => _selected = null),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.theoriginallab.heartcoin',
-              ),
-              MarkerLayer(
-                markers: [
-                  for (final item in others)
+      body: (mainIcon == null || otherIcon == null)
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primarioRojo),
+            )
+          : Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: point,
+                    zoom: 15,
+                  ),
+                  style: dark ? mapDarkStyleJson : null,
+                  onTap: (_) => setState(() => _selected = null),
+                  markers: {
                     Marker(
-                      point: LatLng(
-                        (item['latitude'] as num).toDouble(),
-                        (item['longitude'] as num).toDouble(),
-                      ),
-                      width: 32,
-                      height: 32,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selected = item),
-                        child: const Icon(
-                          Icons.location_on,
-                          color: AppColors.secundarioAzul,
-                          size: 32,
-                        ),
-                      ),
+                      markerId: const MarkerId('main'),
+                      position: point,
+                      icon: mainIcon,
                     ),
-                  Marker(
-                    point: point,
-                    width: 44,
-                    height: 44,
-                    child: const Icon(
-                      Icons.location_on,
-                      color: AppColors.primarioRojo,
-                      size: 44,
+                    for (final item in others)
+                      Marker(
+                        markerId: MarkerId('other_${item['id']}'),
+                        position: LatLng(
+                          (item['latitude'] as num).toDouble(),
+                          (item['longitude'] as num).toDouble(),
+                        ),
+                        icon: otherIcon,
+                        onTap: () => setState(() => _selected = item),
+                      ),
+                  },
+                ),
+                if (_selected != null)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                    child: FloatingLocationCard(
+                      item: _selected!,
+                      onDismiss: () => setState(() => _selected = null),
+                      onTapDetail: () {
+                        final item = _selected!;
+                        setState(() => _selected = null);
+                        widget.onTapOtherLocation?.call(item);
+                      },
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              color: Colors.white.withValues(alpha: 0.8),
-              child: const Text(
-                '© OpenStreetMap contributors',
-                style: TextStyle(fontSize: 11, color: Colors.black87),
-              ),
+              ],
             ),
-          ),
-          if (_selected != null)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: FloatingLocationCard(
-                item: _selected!,
-                onDismiss: () => setState(() => _selected = null),
-                onTapDetail: () {
-                  final item = _selected!;
-                  setState(() => _selected = null);
-                  widget.onTapOtherLocation?.call(item);
-                },
-              ),
-            ),
-        ],
-      ),
     );
   }
 }

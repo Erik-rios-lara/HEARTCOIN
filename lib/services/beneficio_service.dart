@@ -45,6 +45,7 @@ class BeneficioService {
     String? location,
     double? latitude,
     double? longitude,
+    bool destacado = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw StateError('No hay sesión activa.');
@@ -62,6 +63,7 @@ class BeneficioService {
       'location': location,
       'latitude': latitude,
       'longitude': longitude,
+      'destacado': destacado,
     });
   }
 

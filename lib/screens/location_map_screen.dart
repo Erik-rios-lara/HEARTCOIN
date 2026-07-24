@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../widgets/floating_location_card.dart';
 import '../widgets/map_dark_style.dart';
 import '../widgets/map_marker_icons.dart';
+import '../widgets/map_type_button.dart';
 
 /// Mapa a pantalla completa (interactivo, Google Maps) para una
 /// ubicación, con opcionalmente otros lugares del mismo tipo (otros
@@ -40,6 +41,7 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
   Map<String, dynamic>? _selected;
   BitmapDescriptor? _mainIcon;
   BitmapDescriptor? _otherIcon;
+  MapType _mapType = MapType.normal;
 
   @override
   void initState() {
@@ -97,6 +99,7 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
                     target: point,
                     zoom: 15,
                   ),
+                  mapType: _mapType,
                   style: dark ? mapDarkStyleJson : null,
                   onTap: (_) => setState(() => _selected = null),
                   markers: {
@@ -116,6 +119,14 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
                         onTap: () => setState(() => _selected = item),
                       ),
                   },
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: MapTypeButton(
+                    selected: _mapType,
+                    onSelected: (type) => setState(() => _mapType = type),
+                  ),
                 ),
                 if (_selected != null)
                   Positioned(

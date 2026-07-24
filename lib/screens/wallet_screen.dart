@@ -14,6 +14,7 @@ import '../theme/app_colors.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import '../widgets/floating_location_card.dart';
 import '../widgets/map_marker_icons.dart';
+import '../widgets/map_type_button.dart';
 import 'beneficio_detail_screen.dart';
 import 'beneficio_scanner_screen.dart';
 import 'notifications_screen.dart';
@@ -831,6 +832,7 @@ class _BeneficiosMapaScreenState extends State<_BeneficiosMapaScreen> {
   Map<String, dynamic>? _selected;
   BitmapDescriptor? _businessIcon;
   BitmapDescriptor? _meIcon;
+  MapType _mapType = MapType.normal;
 
   @override
   void initState() {
@@ -1037,6 +1039,7 @@ class _BeneficiosMapaScreenState extends State<_BeneficiosMapaScreen> {
             target: center,
             zoom: userLocation != null ? 13 : 11,
           ),
+          mapType: _mapType,
           onTap: (_) => setState(() => _selected = null),
           markers: {
             for (final business in _businesses)
@@ -1058,6 +1061,14 @@ class _BeneficiosMapaScreenState extends State<_BeneficiosMapaScreen> {
                 zIndexInt: 2,
               ),
           },
+        ),
+        Positioned(
+          top: 12,
+          right: 12,
+          child: MapTypeButton(
+            selected: _mapType,
+            onSelected: (type) => setState(() => _mapType = type),
+          ),
         ),
         if (_selected != null)
           Positioned(

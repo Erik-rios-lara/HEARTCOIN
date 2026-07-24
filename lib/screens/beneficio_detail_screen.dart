@@ -180,7 +180,6 @@ class _BeneficioDetailScreenState extends State<BeneficioDetailScreen> {
                       latitude: latitude,
                       longitude: longitude,
                       label: location,
-                      dark: true,
                       otherLocations: _otherBeneficios,
                       onTapOtherLocation: _openOtherBeneficio,
                     ),

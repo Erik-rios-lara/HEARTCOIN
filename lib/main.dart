@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // 1. Importamos la librería de Supabase
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/home_people_screen.dart';
@@ -48,6 +49,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'HeartCoin',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('es', 'MX'),
+      supportedLocales: const [Locale('es', 'MX'), Locale('es')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE91E63)),
       ),

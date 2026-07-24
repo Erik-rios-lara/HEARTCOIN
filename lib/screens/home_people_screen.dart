@@ -108,28 +108,31 @@ class _HomePeopleScreenState extends State<HomePeopleScreen> {
     super.dispose();
   }
 
-  void _onTabTapped(int index) {
+  /// El índice 0 (Home) se queda en esta misma pantalla. Los demás
+  /// navegan a otra pantalla (push) y, al regresar de ella (botón
+  /// atrás o gesto), la pestaña vuelve a marcar Home — si no,
+  /// `_selectedTab` se quedaba pegado en la pestaña de la que ya
+  /// saliste, aunque visualmente ya estés de vuelta en el feed.
+  Future<void> _onTabTapped(int index) async {
     if (index == _selectedTab) return;
+    setState(() => _selectedTab = index);
 
-    // El índice 0 (Home) se queda en esta misma pantalla.
-    // Los demás navegan a sus pantallas correspondientes. Ajusta los
-    // imports/clases si los nombres reales difieren de los que ya
-    // tienes en tu proyecto (wallet_screen.dart, profile_screen.dart,
-    // iniciativas_screen.dart, tu pantalla de búsqueda).
     switch (index) {
       case 1: // Buscar
-        Navigator.of(context).pushNamed('/search');
+        await Navigator.of(context).pushNamed('/search');
         break;
       case 2: // HeartCoin / Wallet (botón central)
-        Navigator.of(context).pushNamed('/wallet');
+        await Navigator.of(context).pushNamed('/wallet');
         break;
       case 3: // Tus acciones
-        Navigator.of(context).pushNamed('/mis-acciones');
+        await Navigator.of(context).pushNamed('/mis-acciones');
         break;
       case 4: // Perfil
-        Navigator.of(context).pushNamed('/profile');
+        await Navigator.of(context).pushNamed('/profile');
         break;
     }
+
+    if (mounted) setState(() => _selectedTab = 0);
   }
 
   void _onCreatePost() {
@@ -178,10 +181,7 @@ class _HomePeopleScreenState extends State<HomePeopleScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _BottomNavBar(
         selectedIndex: _selectedTab,
-        onTap: (index) {
-          _onTabTapped(index);
-          setState(() => _selectedTab = index);
-        },
+        onTap: _onTabTapped,
       ),
     );
   }
@@ -384,7 +384,7 @@ class _AppDrawer extends StatelessWidget {
             const SizedBox(height: 8),
             _DrawerItem(
               icon: Icons.account_balance_wallet_outlined,
-              label: 'Mi wallet',
+              label: 'Mi Billetera',
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pushNamed('/wallet');

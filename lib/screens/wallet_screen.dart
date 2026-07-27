@@ -9,6 +9,7 @@ import '../services/current_location.dart';
 import '../services/location_preference_controller.dart';
 import '../services/notification_service.dart';
 import '../services/ranking_service.dart';
+import '../services/servicio_service.dart';
 import '../services/wallet_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_bottom_nav_bar.dart';
@@ -18,8 +19,9 @@ import '../widgets/map_type_button.dart';
 import 'beneficio_detail_screen.dart';
 import 'beneficio_scanner_screen.dart';
 import 'notifications_screen.dart';
+import 'servicio_detail_screen.dart';
 
-enum _WalletTab { wallet, beneficios, puntos }
+enum _WalletTab { wallet, beneficios, servicios, puntos }
 
 /// Billetera de HeartCoin del usuario: balance real, beneficios
 /// disponibles para canjear (vía QR, con mapa y buscador), historial
@@ -48,22 +50,14 @@ class _WalletScreenState extends State<WalletScreen> {
         bottom: false,
         child: Column(
           children: [
-            _WalletHeader(onMenuTap: () => Navigator.of(context).maybePop()),
-            const SizedBox(height: 8),
-            StreamBuilder<Map<String, dynamic>?>(
-              stream: WalletService.instance.profileStream(),
-              builder: (context, snapshot) {
-                final balance =
-                    (snapshot.data?['hc_balance'] as num?)?.toInt() ?? 0;
-                return _BalanceDisplay(
-                  balance: balance,
-                  onScan: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const BeneficioScannerScreen(),
-                    ),
-                  ),
-                );
-              },
+            _WalletHeroHeader(
+              onMenuTap: () => Navigator.of(context).maybePop(),
+              tab: _tab,
+              onScan: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const BeneficioScannerScreen(),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             _TabPillRow(
@@ -75,6 +69,7 @@ class _WalletScreenState extends State<WalletScreen> {
               child: switch (_tab) {
                 _WalletTab.wallet => const _HistorialTab(),
                 _WalletTab.beneficios => _BeneficiosTab(onOpenMap: _openMap),
+                _WalletTab.servicios => const _ServiciosTab(),
                 _WalletTab.puntos => const _RankingTab(),
               },
             ),
@@ -92,94 +87,21 @@ class _WalletScreenState extends State<WalletScreen> {
 }
 
 /// ============================================================
-/// ENCABEZADO: menú + marca + notificaciones
+/// ENCABEZADO: fondo degradado con curva + menú/notificaciones +
+/// ícono de corazón en anillo + balance (solo en la pestaña Wallet).
 /// ============================================================
-class _WalletHeader extends StatelessWidget {
+class _WalletHeroHeader extends StatelessWidget {
   final VoidCallback onMenuTap;
-  const _WalletHeader({required this.onMenuTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: onMenuTap,
-            child: const Icon(
-              Icons.menu_rounded,
-              color: AppColors.primarioNegro,
-              size: 26,
-            ),
-          ),
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.rojoClaro1.withValues(alpha: 0.15),
-              border: Border.all(color: AppColors.primarioRojo, width: 1.5),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.favorite,
-              color: AppColors.primarioRojo,
-              size: 18,
-            ),
-          ),
-          StreamBuilder<List<Map<String, dynamic>>>(
-            stream: NotificationService.instance.notificationsStream(),
-            builder: (context, snapshot) {
-              final hasUnread = (snapshot.data ?? []).any(
-                (n) => n['is_read'] == false,
-              );
-              return GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationsScreen(),
-                  ),
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(
-                      Icons.notifications_none_rounded,
-                      color: AppColors.primarioNegro,
-                      size: 26,
-                    ),
-                    if (hasUnread)
-                      Positioned(
-                        right: -1,
-                        top: -1,
-                        child: Container(
-                          width: 9,
-                          height: 9,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primarioRojo,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Balance de HC en grande, tocable para escanear un canje (mismo botón
-/// "Canjear" que ya existía, ahora como parte del número).
-class _BalanceDisplay extends StatelessWidget {
-  final int balance;
   final VoidCallback onScan;
-  const _BalanceDisplay({required this.balance, required this.onScan});
+  final _WalletTab tab;
 
-  String get _formatted {
+  const _WalletHeroHeader({
+    required this.onMenuTap,
+    required this.onScan,
+    required this.tab,
+  });
+
+  String _formatted(int balance) {
     final text = balance.toString();
     final buffer = StringBuffer();
     for (var i = 0; i < text.length; i++) {
@@ -191,34 +113,164 @@ class _BalanceDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          _formatted,
-          style: const TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primarioNegro,
+    final showHero = tab == _WalletTab.wallet;
+
+    return ClipPath(
+      clipper: _HeroCurveClipper(),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(20, 4, 20, showHero ? 24 : 16),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFBD9DE), Color(0xFFFFFFFF)],
           ),
         ),
-        const SizedBox(height: 4),
-        GestureDetector(
-          onTap: onScan,
-          child: Text(
-            'Escanear para canjear',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primarioRojo,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: onMenuTap,
+                  child: const Icon(
+                    Icons.menu_rounded,
+                    color: AppColors.primarioNegro,
+                    size: 26,
+                  ),
+                ),
+                StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: NotificationService.instance.notificationsStream(),
+                  builder: (context, snapshot) {
+                    final hasUnread = (snapshot.data ?? []).any(
+                      (n) => n['is_read'] == false,
+                    );
+                    return GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen(),
+                        ),
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(
+                            Icons.notifications_none_rounded,
+                            color: AppColors.primarioNegro,
+                            size: 26,
+                          ),
+                          if (hasUnread)
+                            Positioned(
+                              right: -1,
+                              top: -1,
+                              child: Container(
+                                width: 9,
+                                height: 9,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primarioRojo,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-          ),
+            if (showHero) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.primarioRojo.withValues(alpha: 0.35),
+                    width: 1.5,
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                padding: const EdgeInsets.all(8),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primarioRojo,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.favorite,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Balance',
+                style: TextStyle(fontSize: 13, color: AppColors.gris600),
+              ),
+              const SizedBox(height: 2),
+              StreamBuilder<Map<String, dynamic>?>(
+                stream: WalletService.instance.profileStream(),
+                builder: (context, snapshot) {
+                  final balance =
+                      (snapshot.data?['hc_balance'] as num?)?.toInt() ?? 0;
+                  return Text(
+                    _formatted(balance),
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primarioNegro,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 4),
+              GestureDetector(
+                onTap: onScan,
+                child: Text(
+                  'Escanear para canjear',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primarioRojo,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-/// Selector Wallet / Beneficios / Puntos (Historial / Beneficios / Ranking).
+/// Curva diagonal decorativa del fondo del header (rosa → blanco).
+class _HeroCurveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path()
+      ..lineTo(0, size.height * 0.78)
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        size.height,
+        size.width,
+        size.height * 0.62,
+      )
+      ..lineTo(size.width, 0)
+      ..close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Selector Wallet / Beneficios / Servicios / Puntos (Historial /
+/// Beneficios / Servicios / Ranking).
 class _TabPillRow extends StatelessWidget {
   final _WalletTab selected;
   final ValueChanged<_WalletTab> onSelected;
@@ -227,38 +279,49 @@ class _TabPillRow extends StatelessWidget {
   static const _labels = {
     _WalletTab.wallet: 'Wallet',
     _WalletTab.beneficios: 'Beneficios',
+    _WalletTab.servicios: 'Servicios',
     _WalletTab.puntos: 'Puntos',
   };
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: _WalletTab.values.map((tab) {
-        final isSelected = tab == selected;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: GestureDetector(
-            onTap: () => onSelected(tab),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primarioRojo : Colors.transparent,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Text(
-                _labels[tab]!,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : AppColors.primarioNegro,
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        children: _WalletTab.values.map((tab) {
+          final isSelected = tab == selected;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: GestureDetector(
+              onTap: () => onSelected(tab),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primarioRojo
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _labels[tab]!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : AppColors.primarioNegro,
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -508,6 +571,283 @@ class _BeneficiosTabState extends State<_BeneficiosTab> {
           ],
         );
       },
+    );
+  }
+}
+
+/// ============================================================
+/// PESTAÑA SERVICIOS: servicios activos de empresas, con buscador
+/// y filtro por categoría (mismo patrón que la pestaña Beneficios).
+/// ============================================================
+class _ServiciosTab extends StatefulWidget {
+  const _ServiciosTab();
+
+  @override
+  State<_ServiciosTab> createState() => _ServiciosTabState();
+}
+
+class _ServiciosTabState extends State<_ServiciosTab> {
+  static const _categories = ['Alimentos', 'Moda', 'Salud', 'Educación', 'Otro'];
+
+  final _searchController = TextEditingController();
+  String? _category;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _servicios = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+    try {
+      final servicios = await ServicioService.instance.fetchActiveServicios(
+        category: _category,
+        search: _searchController.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() => _servicios = servicios);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: AppColors.primarioRojo,
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.primarioBlanco,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.only(left: 16),
+            child: TextField(
+              controller: _searchController,
+              onSubmitted: (_) => _load(),
+              decoration: InputDecoration(
+                hintText: 'Buscar servicios',
+                hintStyle: TextStyle(color: AppColors.gris600, fontSize: 14),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                suffixIcon: IconButton(
+                  onPressed: _load,
+                  icon: Icon(Icons.search, color: AppColors.gris600, size: 20),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _CategoryChip(
+                  label: 'Todos',
+                  selected: _category == null,
+                  onTap: () {
+                    setState(() => _category = null);
+                    _load();
+                  },
+                ),
+                for (final category in _categories) ...[
+                  const SizedBox(width: 8),
+                  _CategoryChip(
+                    label: category,
+                    selected: _category == category,
+                    onTap: () {
+                      setState(
+                        () => _category = _category == category
+                            ? null
+                            : category,
+                      );
+                      _load();
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.primarioRojo),
+              ),
+            )
+          else if (_servicios.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Text(
+                  'No hay servicios que coincidan con tu búsqueda.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.gris600),
+                ),
+              ),
+            )
+          else
+            ..._servicios.map(
+              (servicio) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ServicioCard(servicio: servicio),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ServicioCard extends StatelessWidget {
+  final Map<String, dynamic> servicio;
+  const _ServicioCard({required this.servicio});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = servicio['title'] as String? ?? 'Servicio';
+    final description = servicio['description'] as String?;
+    final category = servicio['category'] as String?;
+    final companyName = servicio['company_name'] as String?;
+    final isCashback = servicio['pricing_type'] == 'cashback';
+    final hcCost = (servicio['hc_cost'] as num?)?.toInt();
+    final hcReward = (servicio['hc_reward'] as num?)?.toInt();
+    final hcLabel = isCashback ? '+$hcReward HC' : '$hcCost HC';
+    final location = servicio['location'] as String?;
+
+    return Material(
+      color: AppColors.primarioBlanco,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ServicioDetailScreen(servicio: servicio),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (category != null && category.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.rojoClaro1.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        category,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primarioRojo,
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.gris200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      hcLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primarioNegro,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primarioNegro,
+                ),
+              ),
+              if (companyName != null && companyName.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.apartment, size: 13, color: AppColors.gris600),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        companyName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.gris700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (location != null && location.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      size: 13,
+                      color: AppColors.gris600,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: AppColors.gris600),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (description != null && description.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: TextStyle(fontSize: 13, color: AppColors.gris700),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1115,20 +1455,48 @@ class _HistorialTab extends StatelessWidget {
         }
 
         final transactions = snapshot.data ?? [];
-        if (transactions.isEmpty) {
-          return Center(
-            child: Text(
-              'Aún no tienes movimientos de HC.',
-              style: TextStyle(color: AppColors.gris600),
-            ),
-          );
-        }
 
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          itemCount: transactions.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
-          itemBuilder: (context, index) {
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: [
+            _IniciativasAhorroBanner(
+              onTap: () =>
+                  Navigator.of(context).pushNamed('/iniciativas-ahorro'),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Historial',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primarioNegro,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (transactions.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    'Aún no tienes movimientos de HC.',
+                    style: TextStyle(color: AppColors.gris600),
+                  ),
+                ),
+              )
+            else
+              ..._historyRows(transactions),
+          ],
+        );
+      },
+    );
+  }
+
+  List<Widget> _historyRows(List<Map<String, dynamic>> transactions) {
+    return [
+      for (var index = 0; index < transactions.length; index++) ...[
+        if (index != 0) const Divider(height: 1),
+        Builder(
+          builder: (context) {
             final t = transactions[index];
             final amount = (t['amount'] as num?)?.toInt() ?? 0;
             final type = t['type'] as String? ?? '';
@@ -1188,8 +1556,73 @@ class _HistorialTab extends StatelessWidget {
               ),
             );
           },
-        );
-      },
+        ),
+      ],
+    ];
+  }
+}
+
+/// Banner "Iniciativas de ahorro" (mismo estilo del mockup: fondo
+/// negro, texto y flecha), atajo a la pantalla ya existente.
+class _IniciativasAhorroBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _IniciativasAhorroBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.primarioNegro,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Iniciativas de ahorro',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ahorra con propósito: construye, estudia o adquiere '
+                    'lo que sueñas con metas claras y motivación.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.arrow_forward,
+                color: AppColors.primarioNegro,
+                size: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

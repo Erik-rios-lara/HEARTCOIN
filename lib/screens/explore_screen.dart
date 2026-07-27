@@ -4,12 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/location_preference_controller.dart';
-import '../services/servicio_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/iniciativa_widgets.dart';
-import 'servicio_detail_screen.dart';
-
-const _serviciosFilter = 'Servicios';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -19,25 +15,31 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  static const _categories = [
-    'Voluntariado',
-    'Crowdfunding',
-    'Social',
-    'Ahorro',
-    _serviciosFilter,
-  ];
+  static const _categories = ['Voluntariado', 'Crowdfunding', 'Social', 'Ahorro'];
+
+  static const _categoryColors = {
+    'Voluntariado': Color(0xFFEC324C),
+    'Crowdfunding': Color(0xFFFF8C42),
+    'Social': Color(0xFF4A7CFF),
+    'Ahorro': Color(0xFF42B883),
+  };
+
+  static const _categoryIcons = {
+    'Voluntariado': Icons.volunteer_activism,
+    'Crowdfunding': Icons.savings,
+    'Social': Icons.groups,
+    'Ahorro': Icons.account_balance_wallet,
+  };
 
   final _client = Supabase.instance.client;
   final _searchController = TextEditingController();
 
+  String? _locationLabel;
+  Position? _userPosition;
+  Map<String, int> _categoryCounts = {};
+
   String? _selectedCategory;
   IniciativaSortOption _sort = IniciativaSortOption.reciente;
-
-  bool get _isServicios => _selectedCategory == _serviciosFilter;
-  List<Map<String, dynamic>> _servicios = [];
-
-  Position? _userPosition;
-  String? _locationLabel;
 
   bool _isLoading = true;
   List<Map<String, dynamic>> _iniciativas = [];
@@ -46,6 +48,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void initState() {
     super.initState();
     _loadLocation();
+    _loadCategoryCounts();
     _loadIniciativas();
   }
 
@@ -93,25 +96,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  Future<void> _loadServicios() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadCategoryCounts() async {
     try {
-      final servicios = await ServicioService.instance.fetchActiveServicios(
-        search: _searchController.text.trim(),
-      );
-      _applySort(servicios);
+      final counts = <String, int>{};
+      for (final category in _categories) {
+        final response = await _client
+            .from('iniciativas')
+            .select('id')
+            .eq('status', 'activa')
+            .eq('category', category)
+            .count();
+        counts[category] = response.count;
+      }
       if (!mounted) return;
-      setState(() => _servicios = servicios);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _categoryCounts = counts);
+    } catch (_) {
+      // Sin conteos disponibles: las tarjetas simplemente muestran 0.
     }
   }
 
   Future<void> _loadIniciativas() async {
-    if (_isServicios) {
-      await _loadServicios();
-      return;
-    }
     setState(() => _isLoading = true);
     try {
       var query = _client.from('iniciativas').select().eq('status', 'activa');
@@ -171,13 +175,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _onCategorySelected(String? category) {
-    setState(() => _selectedCategory = category);
+    setState(
+      () => _selectedCategory = _selectedCategory == category ? null : category,
+    );
     _loadIniciativas();
   }
 
   void _onSortSelected(IniciativaSortOption sort) {
     setState(() => _sort = sort);
-    _applySort(_isServicios ? _servicios : _iniciativas);
+    _applySort(_iniciativas);
     setState(() {});
   }
 
@@ -195,20 +201,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Filtrar por categoría',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-              const SizedBox(height: 12),
-              _CategoryChips(
-                categories: _categories,
-                selected: _selectedCategory,
-                onSelected: (c) {
-                  Navigator.of(sheetContext).pop();
-                  _onCategorySelected(c);
-                },
-              ),
-              const SizedBox(height: 20),
               const Text(
                 'Ordenar por',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -233,199 +225,258 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.gris100,
-      appBar: AppBar(
-        backgroundColor: AppColors.primarioBlanco,
-        foregroundColor: AppColors.primarioNegro,
-        elevation: 0,
-        title: const Text('Explorar'),
-      ),
-      body: RefreshIndicator(
-        color: AppColors.primarioRojo,
-        onRefresh: _loadIniciativas,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primarioBlanco,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.gris300),
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: AppColors.primarioRojo,
+          onRefresh: _loadIniciativas,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).maybePop(),
+                    child: const Icon(
+                      Icons.menu_rounded,
+                      color: AppColors.primarioNegro,
+                      size: 26,
                     ),
-                    child: TextField(
-                      controller: _searchController,
-                      onSubmitted: (_) => _loadIniciativas(),
-                      decoration: InputDecoration(
-                        hintText: _isServicios
-                            ? 'Buscar servicios...'
-                            : 'Buscar iniciativas...',
-                        hintStyle: TextStyle(color: AppColors.gris600),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: AppColors.gris600,
+                  ),
+                  const Icon(
+                    Icons.notifications_none_rounded,
+                    color: AppColors.primarioNegro,
+                    size: 26,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Heart Coin',
+                style: TextStyle(fontSize: 12, color: AppColors.gris600),
+              ),
+              const Text(
+                'Explorar',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primarioNegro,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primarioBlanco,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.gris300),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onSubmitted: (_) => _loadIniciativas(),
+                        decoration: InputDecoration(
+                          hintText: 'Buscar iniciativas...',
+                          hintStyle: TextStyle(color: AppColors.gris600),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppColors.gris600,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                          ),
                         ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.primarioRojo,
-                    borderRadius: BorderRadius.circular(14),
+                  const SizedBox(width: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primarioRojo,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: IconButton(
+                      onPressed: _openFiltersSheet,
+                      icon: const Icon(Icons.tune, color: Colors.white),
+                    ),
                   ),
-                  child: IconButton(
-                    onPressed: _openFiltersSheet,
-                    icon: const Icon(Icons.tune, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            SizedBox(
-              height: 36,
-              child: _CategoryChips(
-                categories: _categories,
-                selected: _selectedCategory,
-                onSelected: _onCategorySelected,
-                scrollable: true,
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
-            SizedBox(
-              height: 36,
-              child: IniciativaSortChips(
-                selected: _sort,
-                onSelected: _onSortSelected,
-                scrollable: true,
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.4,
+                children: [
+                  for (final category in _categories)
+                    _CategoryCard(
+                      label: category,
+                      count: _categoryCounts[category] ?? 0,
+                      color: _categoryColors[category]!,
+                      icon: _categoryIcons[category]!,
+                      selected: _selectedCategory == category,
+                      onTap: () => _onCategorySelected(category),
+                    ),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            if (!_isServicios) ...[
               const _DecideBanner(),
               const SizedBox(height: 20),
-            ],
 
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on,
-                  color: AppColors.primarioRojo,
-                  size: 18,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _locationLabel != null
-                      ? 'Cerca de ti · $_locationLabel'
-                      : 'Cerca de ti',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primarioNegro,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: CircularProgressIndicator(
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
                     color: AppColors.primarioRojo,
+                    size: 18,
                   ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _locationLabel != null
+                        ? 'Cerca de ti · $_locationLabel'
+                        : 'Cerca de ti',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primarioNegro,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              SizedBox(
+                height: 36,
+                child: IniciativaSortChips(
+                  selected: _sort,
+                  onSelected: _onSortSelected,
+                  scrollable: true,
                 ),
-              )
-            else if (_isServicios)
-              if (_servicios.isEmpty)
+              ),
+              const SizedBox(height: 16),
+
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primarioRojo,
+                    ),
+                  ),
+                )
+              else if (_iniciativas.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 40),
                   child: Center(
                     child: Text(
-                      'No hay servicios que coincidan con tu búsqueda.',
+                      'No hay iniciativas que coincidan con tu búsqueda.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.gris600),
                     ),
                   ),
                 )
               else
-                ..._servicios.map(
-                  (servicio) => Padding(
+                ..._iniciativas.map(
+                  (iniciativa) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _ServicioCard(servicio: servicio),
-                  ),
-                )
-            else if (_iniciativas.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: Text(
-                    'No hay iniciativas que coincidan con tu búsqueda.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.gris600),
+                    child: IniciativaCard(iniciativa: iniciativa),
                   ),
                 ),
-              )
-            else
-              ..._iniciativas.map(
-                (iniciativa) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: IniciativaCard(iniciativa: iniciativa),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _CategoryChips extends StatelessWidget {
-  final List<String> categories;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
-  final bool scrollable;
+class _CategoryCard extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _CategoryChips({
-    required this.categories,
+  const _CategoryCard({
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.icon,
     required this.selected,
-    required this.onSelected,
-    this.scrollable = false,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final chips = [
-      AppChip(
-        label: 'Todas',
-        selected: selected == null,
-        onTap: () => onSelected(null),
-      ),
-      for (final category in categories)
-        AppChip(
-          label: category,
-          selected: selected == category,
-          onTap: () => onSelected(category),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [color, color.withValues(alpha: 0.7)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: selected
+              ? Border.all(color: AppColors.primarioNegro, width: 2)
+              : null,
         ),
-    ];
-
-    if (!scrollable) {
-      return Wrap(spacing: 8, runSpacing: 8, children: chips);
-    }
-
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemCount: chips.length,
-      separatorBuilder: (_, _) => const SizedBox(width: 8),
-      itemBuilder: (_, index) => chips[index],
+        child: Stack(
+          children: [
+            Positioned(
+              right: -6,
+              bottom: -6,
+              child: Icon(
+                icon,
+                size: 44,
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$count iniciativas',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -495,145 +546,6 @@ class _DecideBanner extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ServicioCard extends StatelessWidget {
-  final Map<String, dynamic> servicio;
-  const _ServicioCard({required this.servicio});
-
-  @override
-  Widget build(BuildContext context) {
-    final title = servicio['title'] as String? ?? 'Servicio';
-    final description = servicio['description'] as String?;
-    final category = servicio['category'] as String?;
-    final companyName = servicio['company_name'] as String?;
-    final isCashback = servicio['pricing_type'] == 'cashback';
-    final hcCost = (servicio['hc_cost'] as num?)?.toInt();
-    final hcReward = (servicio['hc_reward'] as num?)?.toInt();
-    final hcLabel = isCashback ? '+$hcReward HC' : '$hcCost HC';
-    final location = servicio['location'] as String?;
-
-    return Material(
-      color: AppColors.primarioBlanco,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ServicioDetailScreen(servicio: servicio),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (category != null && category.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.rojoClaro1.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        category,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primarioRojo,
-                        ),
-                      ),
-                    ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.gris200,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      hcLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primarioNegro,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primarioNegro,
-                ),
-              ),
-              if (companyName != null && companyName.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.apartment, size: 13, color: AppColors.gris600),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        companyName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.gris700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (location != null && location.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 13,
-                      color: AppColors.gris600,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        location,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: AppColors.gris600),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (description != null && description.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: TextStyle(fontSize: 13, color: AppColors.gris700),
-                ),
-              ],
-            ],
-          ),
-        ),
       ),
     );
   }

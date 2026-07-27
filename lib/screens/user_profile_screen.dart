@@ -172,15 +172,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 padding: const EdgeInsets.only(bottom: 20),
                 children: [
                   const SizedBox(height: 20),
-                  CircleAvatar(
-                    radius: 44,
-                    backgroundColor: AppColors.gris200,
-                    backgroundImage: avatarUrl != null
-                        ? NetworkImage(avatarUrl)
-                        : null,
-                    child: avatarUrl == null
-                        ? Icon(Icons.person, size: 44, color: AppColors.gris600)
-                        : null,
+                  Center(
+                    child: ClipOval(
+                      child: Container(
+                        width: 88,
+                        height: 88,
+                        color: AppColors.gris200,
+                        child: avatarUrl != null
+                            ? Image.network(
+                                avatarUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Icon(
+                                  Icons.person,
+                                  size: 44,
+                                  color: AppColors.gris600,
+                                ),
+                              )
+                            : Icon(
+                                Icons.person,
+                                size: 44,
+                                color: AppColors.gris600,
+                              ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(

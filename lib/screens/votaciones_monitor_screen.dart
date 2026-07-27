@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/votaciones_service.dart';
 import '../theme/app_colors.dart';
-import '../widgets/iniciativa_widgets.dart';
-import 'votacion_monitor_detail_screen.dart';
 
-enum _MonitorSort { masVotados, masRecientes }
+/// Colores del gráfico de barras (se repiten en ciclo por cada barra),
+/// igual que en el mockup: gris / verde-lima / cian.
+const _barColors = [
+  Color(0xFF58585A),
+  Color(0xFFC4E538),
+  Color(0xFF4AD6D6),
+];
 
 class VotacionesMonitorScreen extends StatefulWidget {
   const VotacionesMonitorScreen({super.key});
@@ -16,39 +21,45 @@ class VotacionesMonitorScreen extends StatefulWidget {
 }
 
 class _VotacionesMonitorScreenState extends State<VotacionesMonitorScreen> {
-  static const _categories = [
-    'Voluntariado',
-    'Crowdfunding',
-    'Social',
-    'Ahorro',
-  ];
+  final _client = Supabase.instance.client;
 
-  String? _selectedCategory;
-  _MonitorSort _sort = _MonitorSort.masVotados;
+  String? _selectedVotacionId;
+  bool _isLoadingVotes = false;
+  List<_DailyVotes> _dailyVotes = [];
 
-  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> source) {
-    var list = source.where((v) {
-      if (_selectedCategory == null) return true;
-      return v['type'] == _selectedCategory;
-    }).toList();
+  Future<void> _loadDailyVotes(String votacionId) async {
+    setState(() => _isLoadingVotes = true);
+    try {
+      final votes = await _client
+          .from('votacion_votes')
+          .select('created_at')
+          .eq('votacion_id', votacionId)
+          .order('created_at');
 
-    switch (_sort) {
-      case _MonitorSort.masVotados:
-        list.sort(
-          (a, b) => ((b['votes_count'] as num?) ?? 0).compareTo(
-            (a['votes_count'] as num?) ?? 0,
-          ),
-        );
-        break;
-      case _MonitorSort.masRecientes:
-        list.sort(
-          (a, b) => (b['created_at'] as String? ?? '').compareTo(
-            a['created_at'] as String? ?? '',
-          ),
-        );
-        break;
+      final perDay = <DateTime, int>{};
+      for (final row in votes) {
+        final createdAt = DateTime.tryParse(row['created_at'] as String);
+        if (createdAt == null) continue;
+        final day = DateTime(createdAt.year, createdAt.month, createdAt.day);
+        perDay[day] = (perDay[day] ?? 0) + 1;
+      }
+
+      final today = DateTime.now();
+      final last7Days = [
+        for (var i = 6; i >= 0; i--)
+          DateTime(today.year, today.month, today.day - i),
+      ];
+
+      final daily = [
+        for (final day in last7Days)
+          _DailyVotes(day: day, votes: perDay[day] ?? 0),
+      ];
+
+      if (!mounted) return;
+      setState(() => _dailyVotes = daily);
+    } finally {
+      if (mounted) setState(() => _isLoadingVotes = false);
     }
-    return list;
   }
 
   @override
@@ -70,96 +81,128 @@ class _VotacionesMonitorScreenState extends State<VotacionesMonitorScreen> {
             );
           }
 
-          final votaciones = _applyFilters(snapshot.data ?? []);
-          final maxVotes = votaciones.isEmpty
-              ? 1
-              : votaciones
-                    .map((v) => (v['votes_count'] as num?)?.toInt() ?? 0)
-                    .reduce((a, b) => a > b ? a : b);
+          final votaciones = [...snapshot.data ?? []]
+            ..sort(
+              (a, b) => (b['created_at'] as String? ?? '').compareTo(
+                a['created_at'] as String? ?? '',
+              ),
+            );
+
+          if (votaciones.isEmpty) {
+            return Center(
+              child: Text(
+                'Aún no hay votaciones registradas.',
+                style: TextStyle(color: AppColors.gris600),
+              ),
+            );
+          }
+
+          final selectedId =
+              (_selectedVotacionId != null &&
+                  votaciones.any((v) => v['id'] == _selectedVotacionId))
+              ? _selectedVotacionId
+              : votaciones.first['id'] as String;
+
+          if (_selectedVotacionId != selectedId) {
+            _selectedVotacionId = selectedId;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _loadDailyVotes(selectedId as String);
+            });
+          }
+
+          final selected = votaciones.firstWhere(
+            (v) => v['id'] == selectedId,
+          );
+          final title = selected['title'] as String? ?? 'Votación';
+          final votesCount = (selected['votes_count'] as num?)?.toInt() ?? 0;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    AppChip(
-                      label: 'Todas',
-                      selected: _selectedCategory == null,
-                      onTap: () => setState(() => _selectedCategory = null),
-                    ),
-                    const SizedBox(width: 8),
-                    for (final category in _categories) ...[
-                      AppChip(
-                        label: category,
-                        selected: _selectedCategory == category,
-                        onTap: () =>
-                            setState(() => _selectedCategory = category),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                  ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
                 ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    AppChip(
-                      label: 'Más votados',
-                      selected: _sort == _MonitorSort.masVotados,
-                      onTap: () =>
-                          setState(() => _sort = _MonitorSort.masVotados),
+                decoration: BoxDecoration(
+                  color: AppColors.primarioBlanco,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: selectedId as String,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.primarioNegro,
                     ),
-                    const SizedBox(width: 8),
-                    AppChip(
-                      label: 'Más recientes',
-                      selected: _sort == _MonitorSort.masRecientes,
-                      onTap: () =>
-                          setState(() => _sort = _MonitorSort.masRecientes),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primarioNegro,
                     ),
-                  ],
+                    items: votaciones
+                        .map(
+                          (v) => DropdownMenuItem<String>(
+                            value: v['id'] as String,
+                            child: Text(
+                              v['title'] as String? ?? 'Votación',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _selectedVotacionId = value);
+                      _loadDailyVotes(value);
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
 
-              if (votaciones.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: Center(
-                    child: Text(
-                      'No hay votaciones que coincidan con el filtro.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.gris600),
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.primarioBlanco,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (var i = 0; i < votaciones.length; i++) ...[
-                        _RankingRow(
-                          rank: i + 1,
-                          votacion: votaciones[i],
-                          maxVotes: maxVotes,
-                        ),
-                        if (i != votaciones.length - 1)
-                          const SizedBox(height: 16),
-                      ],
-                    ],
-                  ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppColors.primarioBlanco,
+                  borderRadius: BorderRadius.circular(20),
                 ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primarioNegro,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$votesCount votos totales',
+                      style: TextStyle(fontSize: 12, color: AppColors.gris600),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_isLoadingVotes)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 30),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primarioRojo,
+                          ),
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: 200,
+                        child: _BarChart(points: _dailyVotes),
+                      ),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -168,105 +211,72 @@ class _VotacionesMonitorScreenState extends State<VotacionesMonitorScreen> {
   }
 }
 
-class _RankingRow extends StatelessWidget {
-  final int rank;
-  final Map<String, dynamic> votacion;
-  final int maxVotes;
+class _DailyVotes {
+  final DateTime day;
+  final int votes;
+  const _DailyVotes({required this.day, required this.votes});
+}
 
-  const _RankingRow({
-    required this.rank,
-    required this.votacion,
-    required this.maxVotes,
-  });
+class _BarChart extends StatelessWidget {
+  final List<_DailyVotes> points;
+  const _BarChart({required this.points});
+
+  static const _weekdayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
   @override
   Widget build(BuildContext context) {
-    final title = votacion['title'] as String? ?? 'Votación';
-    final foundation = votacion['foundation_name'] as String? ?? '';
-    final votesCount = (votacion['votes_count'] as num?)?.toInt() ?? 0;
-    final fraction = maxVotes > 0 ? votesCount / maxVotes : 0.0;
+    final maxVotes = points.isEmpty
+        ? 1
+        : points
+              .map((p) => p.votes)
+              .reduce((a, b) => a > b ? a : b)
+              .clamp(1, 1 << 30);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => VotacionMonitorDetailScreen(votacion: votacion),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                SizedBox(
-                  width: 22,
-                  child: Text(
-                    '#$rank',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.gris600,
-                    ),
-                  ),
-                ),
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (var i = 0; i < points.length; i++) ...[
+                if (i != 0) const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    title,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primarioNegro,
+                  child: FractionallySizedBox(
+                    heightFactor: (points[i].votes / maxVotes).clamp(
+                      points[i].votes == 0 ? 0.02 : 0.08,
+                      1.0,
+                    ),
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _barColors[i % _barColors.length],
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(6),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '$votesCount votos',
-                  style: TextStyle(fontSize: 12, color: AppColors.gris600),
                 ),
               ],
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(left: 22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (foundation.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        foundation,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.gris600,
-                        ),
-                      ),
-                    ),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: double.infinity,
-                      height: 10,
-                      color: AppColors.gris200,
-                      alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(
-                        widthFactor: fraction.clamp(0.02, 1.0),
-                        child: Container(
-                          height: 10,
-                          color: AppColors.primarioRojo,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (var i = 0; i < points.length; i++) ...[
+              if (i != 0) const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _weekdayLabels[points[i].day.weekday - 1],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: AppColors.gris600),
+                ),
               ),
-            ),
+            ],
           ],
         ),
-      ),
+      ],
     );
   }
 }

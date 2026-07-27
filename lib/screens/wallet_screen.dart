@@ -587,12 +587,35 @@ class _ServiciosTab extends StatefulWidget {
 }
 
 class _ServiciosTabState extends State<_ServiciosTab> {
-  static const _categories = ['Alimentos', 'Moda', 'Salud', 'Educación', 'Otro'];
+  static const _categories = [
+    'Consultoría',
+    'Tecnología',
+    'Diseño',
+    'Legal',
+    'Marketing',
+    'Capacitación',
+    'Otro',
+  ];
+
+  static const _categoryIcons = {
+    'Consultoría': Icons.support_agent,
+    'Tecnología': Icons.memory,
+    'Diseño': Icons.brush,
+    'Legal': Icons.gavel,
+    'Marketing': Icons.campaign,
+    'Capacitación': Icons.school_outlined,
+    'Otro': Icons.storefront,
+  };
 
   final _searchController = TextEditingController();
   String? _category;
   bool _isLoading = true;
   List<Map<String, dynamic>> _servicios = [];
+
+  List<Map<String, dynamic>> get _destacados =>
+      _servicios.where((s) => s['destacado'] == true).toList();
+  List<Map<String, dynamic>> get _paraTi =>
+      _servicios.where((s) => s['destacado'] != true).toList();
 
   @override
   void initState() {
@@ -681,7 +704,7 @@ class _ServiciosTabState extends State<_ServiciosTab> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
@@ -689,25 +712,66 @@ class _ServiciosTabState extends State<_ServiciosTab> {
                 child: CircularProgressIndicator(color: AppColors.primarioRojo),
               ),
             )
-          else if (_servicios.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40),
-              child: Center(
-                child: Text(
-                  'No hay servicios que coincidan con tu búsqueda.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.gris600),
-                ),
+          else ...[
+            if (_destacados.isNotEmpty) ...[
+              const _SectionHeader(
+                icon: Icons.star_rounded,
+                label: 'Destacados',
               ),
-            )
-          else
-            ..._servicios.map(
-              (servicio) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ServicioCard(servicio: servicio),
+              const SizedBox(height: 12),
+              _ServicioCarousel(
+                servicios: _destacados,
+                categoryIcons: _categoryIcons,
               ),
+              const SizedBox(height: 24),
+            ],
+            const _SectionHeader(
+              icon: Icons.storefront_rounded,
+              label: 'Para ti',
             ),
+            const SizedBox(height: 12),
+            if (_paraTi.isEmpty)
+              Text(
+                'No hay servicios que coincidan con tu búsqueda.',
+                style: TextStyle(color: AppColors.gris600),
+              )
+            else
+              _ServicioCarousel(
+                servicios: _paraTi,
+                categoryIcons: _categoryIcons,
+              ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _ServicioCarousel extends StatelessWidget {
+  final List<Map<String, dynamic>> servicios;
+  final Map<String, IconData> categoryIcons;
+
+  const _ServicioCarousel({
+    required this.servicios,
+    required this.categoryIcons,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 194,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: servicios.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
+        itemBuilder: (context, index) {
+          final servicio = servicios[index];
+          final category = servicio['category'] as String?;
+          return _ServicioCard(
+            servicio: servicio,
+            categoryIcon: categoryIcons[category],
+          );
+        },
       ),
     );
   }
@@ -715,137 +779,141 @@ class _ServiciosTabState extends State<_ServiciosTab> {
 
 class _ServicioCard extends StatelessWidget {
   final Map<String, dynamic> servicio;
-  const _ServicioCard({required this.servicio});
+  final IconData? categoryIcon;
+
+  const _ServicioCard({required this.servicio, this.categoryIcon});
 
   @override
   Widget build(BuildContext context) {
     final title = servicio['title'] as String? ?? 'Servicio';
     final description = servicio['description'] as String?;
     final category = servicio['category'] as String?;
-    final companyName = servicio['company_name'] as String?;
     final isCashback = servicio['pricing_type'] == 'cashback';
     final hcCost = (servicio['hc_cost'] as num?)?.toInt();
     final hcReward = (servicio['hc_reward'] as num?)?.toInt();
     final hcLabel = isCashback ? '+$hcReward HC' : '$hcCost HC';
-    final location = servicio['location'] as String?;
 
-    return Material(
-      color: AppColors.primarioBlanco,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ServicioDetailScreen(servicio: servicio),
-          ),
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ServicioDetailScreen(servicio: servicio),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (category != null && category.isNotEmpty)
-                    Container(
+      ),
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          color: AppColors.primarioBlanco,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primarioNegro.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(18),
+                  ),
+                  child: Container(
+                    height: 90,
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.primarioRojo,
+                          AppColors.rojoOscuro1,
+                        ],
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      categoryIcon ?? Icons.storefront,
+                      color: Colors.white.withValues(alpha: 0.85),
+                      size: 32,
+                    ),
+                  ),
+                ),
+                if (category != null && category.isNotEmpty)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 8,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.rojoClaro1.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         category,
-                        style: const TextStyle(
-                          fontSize: 11,
+                        style: TextStyle(
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primarioRojo,
+                          color: AppColors.primarioNegro,
                         ),
                       ),
                     ),
-                  const Spacer(),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primarioNegro,
+                    ),
+                  ),
+                  if (description != null && description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: AppColors.gris600),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.gris200,
+                      color: AppColors.rojoClaro1.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       hcLabel,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primarioNegro,
+                        color: AppColors.primarioRojo,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primarioNegro,
-                ),
-              ),
-              if (companyName != null && companyName.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.apartment, size: 13, color: AppColors.gris600),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        companyName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.gris700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (location != null && location.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 13,
-                      color: AppColors.gris600,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        location,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: AppColors.gris600),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (description != null && description.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: TextStyle(fontSize: 13, color: AppColors.gris700),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

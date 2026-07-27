@@ -36,6 +36,7 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
   final _hcAmountController = TextEditingController();
   final _maxRedemptionsController = TextEditingController();
   LocationCaptureResult? _location;
+  bool _destacado = false;
 
   bool get _isCashback => _pricingType == 'cashback';
 
@@ -86,6 +87,7 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
         location: _location?.label,
         latitude: _location?.latitude,
         longitude: _location?.longitude,
+        destacado: _destacado,
       );
 
       if (!mounted) return;
@@ -203,6 +205,22 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
           const _FieldLabel('Ubicación (opcional)'),
           LocationCaptureField(
             onChanged: (result) => setState(() => _location = result),
+          ),
+          const SizedBox(height: 16),
+
+          SwitchListTile(
+            value: _destacado,
+            onChanged: (v) => setState(() => _destacado = v),
+            activeThumbColor: AppColors.primarioRojo,
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'Marcar como destacado',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text(
+              'Aparece en la sección "Destacados" de la billetera.',
+              style: TextStyle(fontSize: 12),
+            ),
           ),
           const SizedBox(height: 28),
 

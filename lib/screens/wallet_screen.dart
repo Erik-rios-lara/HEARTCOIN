@@ -18,6 +18,7 @@ import '../widgets/map_marker_icons.dart';
 import '../widgets/map_type_button.dart';
 import 'beneficio_detail_screen.dart';
 import 'beneficio_scanner_screen.dart';
+import 'location_map_screen.dart';
 import 'notifications_screen.dart';
 import 'servicio_detail_screen.dart';
 
@@ -1342,13 +1343,40 @@ class _BeneficiosMapaScreenState extends State<_BeneficiosMapaScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                business['company_name'] as String,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primarioNegro,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      business['company_name'] as String,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primarioNegro,
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LocationMapScreen(
+                            latitude: (business['latitude'] as num).toDouble(),
+                            longitude: (business['longitude'] as num)
+                                .toDouble(),
+                            label: business['company_name'] as String?,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.streetview, size: 18),
+                    label: const Text('Vista de calle'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primarioRojo,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                ],
               ),
               if ((business['location'] as String?)?.isNotEmpty == true) ...[
                 const SizedBox(height: 4),

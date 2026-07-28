@@ -42,11 +42,45 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
   BitmapDescriptor? _mainIcon;
   BitmapDescriptor? _otherIcon;
   MapType _mapType = MapType.normal;
+  MapType? _mapTypeBeforeStreetLevel;
+  GoogleMapController? _mapController;
+  bool _streetLevel = false;
 
   @override
   void initState() {
     super.initState();
     _loadIcons();
+  }
+
+  /// Anima la cámara del propio mapa a una vista cercana e inclinada
+  /// ("a pie de calle"), en vez de abrir Street View real de Google.
+  /// Reutiliza la misma API key del mapa nativo, sin depender de un
+  /// WebView ni de una segunda clave. Cambia a modo híbrido (satélite
+  /// + edificios 3D vectoriales) mientras dura la vista de calle: el
+  /// modo satélite puro no tiene geometría 3D, solo foto aérea plana.
+  Future<void> _toggleStreetLevel() async {
+    final controller = _mapController;
+    if (controller == null) return;
+    final point = LatLng(widget.latitude, widget.longitude);
+    final enteringStreetLevel = !_streetLevel;
+
+    setState(() {
+      _streetLevel = enteringStreetLevel;
+      if (enteringStreetLevel) {
+        _mapTypeBeforeStreetLevel = _mapType;
+        _mapType = MapType.hybrid;
+      } else {
+        _mapType = _mapTypeBeforeStreetLevel ?? MapType.normal;
+      }
+    });
+
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        enteringStreetLevel
+            ? CameraPosition(target: point, zoom: 19, tilt: 75, bearing: 0)
+            : CameraPosition(target: point, zoom: 15, tilt: 0, bearing: 0),
+      ),
+    );
   }
 
   Future<void> _loadIcons() async {
@@ -101,6 +135,7 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
                   ),
                   mapType: _mapType,
                   style: dark ? mapDarkStyleJson : null,
+                  onMapCreated: (controller) => _mapController = controller,
                   onTap: (_) => setState(() => _selected = null),
                   markers: {
                     Marker(
@@ -128,6 +163,23 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
                     onSelected: (type) => setState(() => _mapType = type),
                   ),
                 ),
+                if (_selected == null)
+                  Positioned(
+                    bottom: 16,
+                    right: 16,
+                    child: FloatingActionButton.extended(
+                      heroTag: 'street_view',
+                      backgroundColor: AppColors.primarioNegro,
+                      foregroundColor: Colors.white,
+                      icon: Icon(
+                        _streetLevel
+                            ? Icons.map_outlined
+                            : Icons.streetview,
+                      ),
+                      label: Text(_streetLevel ? 'Ver mapa' : 'Vista de calle'),
+                      onPressed: _toggleStreetLevel,
+                    ),
+                  ),
                 if (_selected != null)
                   Positioned(
                     left: 16,

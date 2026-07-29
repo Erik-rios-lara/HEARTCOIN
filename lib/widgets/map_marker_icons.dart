@@ -3,11 +3,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Genera el bitmap del pin de marca (gota de mapa + corazón blanco al
-/// centro, mismo diseño que `HeartMapPin`) para usarlo como ícono de
-/// `Marker` de Google Maps — Google Maps solo acepta imágenes como
-/// ícono de marcador, no widgets en vivo, así que se dibuja una vez
-/// sobre un `Canvas` y se exporta a PNG.
 Future<BitmapDescriptor> heartPinBitmap({
   required Color color,
   double size = 96,
@@ -15,7 +10,10 @@ Future<BitmapDescriptor> heartPinBitmap({
 }) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
-  final pixelSize = size * 2; // resolución extra para que se vea nítido
+  
+  // Guardamos la proporción de escala (2.0 para alta nitidez)
+  const double pixelRatio = 2.0; 
+  final pixelSize = size * pixelRatio;
 
   void paintIcon(
     IconData icon,
@@ -52,18 +50,24 @@ Future<BitmapDescriptor> heartPinBitmap({
   final picture = recorder.endRecording();
   final image = await picture.toImage(pixelSize.round(), pixelSize.round());
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-  return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
+
+  // 🔴 CAMBIO CLAVE AQUÍ:
+  // Se indica `imagePixelRatio: pixelRatio` para que Google Maps sepa
+  // que la imagen está a 2x y la encoja al tamaño lógico real ('size').
+  return BitmapDescriptor.bytes(
+    bytes!.buffer.asUint8List(),
+    imagePixelRatio: pixelRatio,
+  );
 }
 
-/// Punto simple (círculo relleno con borde blanco) para marcar "tú
-/// estás aquí" en el mapa.
 Future<BitmapDescriptor> dotBitmap({
   required Color color,
   double size = 44,
 }) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
-  final pixelSize = size * 2;
+  const double pixelRatio = 2.0;
+  final pixelSize = size * pixelRatio;
   final center = Offset(pixelSize / 2, pixelSize / 2);
   final radius = pixelSize / 2 - 4;
 
@@ -73,5 +77,9 @@ Future<BitmapDescriptor> dotBitmap({
   final picture = recorder.endRecording();
   final image = await picture.toImage(pixelSize.round(), pixelSize.round());
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-  return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
+  
+  return BitmapDescriptor.bytes(
+    bytes!.buffer.asUint8List(),
+    imagePixelRatio: pixelRatio,
+  );
 }

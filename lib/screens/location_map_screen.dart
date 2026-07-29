@@ -89,8 +89,8 @@ class _LocationMapScreenState extends State<LocationMapScreen> {
     final otherColor = widget.dark ? Colors.white70 : AppColors.secundarioAzul;
 
     final results = await Future.wait([
-      heartPinBitmap(color: mainColor, heartColor: mainHeart, size: 52),
-      heartPinBitmap(color: otherColor, heartColor: Colors.white, size: 40),
+      heartPinBitmap(color: mainColor, heartColor: mainHeart, size: 10),
+      heartPinBitmap(color: otherColor, heartColor: Colors.white, size: 14),
     ]);
     if (!mounted) return;
     setState(() {

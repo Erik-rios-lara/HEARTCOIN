@@ -1,82 +1,61 @@
 # Cuentas de demo — HeartCoin
 
-Listado de todas las cuentas que existen hoy en el proyecto de Supabase (`bamrvwzpcqwoyuwbvomw`), por rol. Todas las cuentas de demo (dominio `heartcoin-demo.mx` o `.mx` de organizaciones/empresas) comparten la contraseña:
+Listado de todas las cuentas que existen hoy en el proyecto de Supabase (`bamrvwzpcqwoyuwbvomw`), por rol. Sembradas el 31 de julio de 2026, después de limpiar por completo la base de datos anterior (cuentas y contenido previos). Todas comparten la contraseña:
 
 ```
 HeartCoin2026!
 ```
 
-Las 3 cuentas marcadas como "no-demo" al final de la sección Personal son cuentas reales de prueba usadas durante el desarrollo, no parte de la siembra — su contraseña no es necesariamente la de arriba.
-
-Todas las cuentas Personal (demo y no-demo) tienen 5 check-ins/certificados sembrados y 250 HC de balance (5 × 50 HC otorgados automáticamente por el trigger de check-in).
+Todas las cuentas fueron creadas directo por la Admin API de Supabase (no a través del formulario de registro de la app), con el correo ya confirmado — el mismo método usado en la siembra original.
 
 ---
 
 ## Personal (`personal_profiles`)
 
-| Nombre | Correo | Tipo de perfil |
-|---|---|---|
-| Alejandro Cruz | `alejandro.cruz@heartcoin-demo.mx` | Estudiante |
-| Ana Martínez | `ana.martinez@heartcoin-demo.mx` | Profesional |
-| Carlos Flores | `carlos.flores@heartcoin-demo.mx` | Investigador |
-| Carmen González | `carmen.gonzalez@heartcoin-demo.mx` | Investigador |
-| Daniela Díaz | `daniela.diaz@heartcoin-demo.mx` | Profesional |
-| Diego Reyes | `diego.reyes@heartcoin-demo.mx` | Voluntario |
-| Fernanda Torres | `fernanda.torres@heartcoin-demo.mx` | Estudiante |
-| Javier Gutiérrez | `javier.gutierrez@heartcoin-demo.mx` | Profesional |
-| Jorge Pérez | `jorge.perez@heartcoin-demo.mx` | Voluntario |
-| José Hernández | `jose.hernandez@heartcoin-demo.mx` | Emprendedor |
-| Luis López | `luis.lopez@heartcoin-demo.mx` | Estudiante |
-| María García | `maria.garcia@heartcoin-demo.mx` | Voluntario |
-| Miguel Ramírez | `miguel.ramirez@heartcoin-demo.mx` | Profesional |
-| Paola Morales | `paola.morales@heartcoin-demo.mx` | Investigador |
-| Renata Ortiz | `renata.ortiz@heartcoin-demo.mx` | Emprendedor |
-| Ricardo Gómez | `ricardo.gomez@heartcoin-demo.mx` | Emprendedor |
-| Roberto Ramos | `roberto.ramos@heartcoin-demo.mx` | Investigador |
-| Sofía Sánchez | `sofia.sanchez@heartcoin-demo.mx` | Emprendedor |
-| Valeria Rivera | `valeria.rivera@heartcoin-demo.mx` | Voluntario |
-| Ximena Chávez | `ximena.chavez@heartcoin-demo.mx` | Estudiante |
+Autoras de las **50 publicaciones** (10 por cuenta), cada publicación con imagen real subida a MediaAAS y **10 comentarios** (500 en total, rotando entre las 5 cuentas como autoras de los comentarios).
 
-**No-demo** (cuentas reales de prueba, no forman parte de la siembra):
-
-| Nombre | Correo | Tipo de perfil |
-|---|---|---|
-| Aldo | `scriperkns@gmail.com` | Voluntario |
-| Erik Rios | `erikrios@test.com` | Voluntario |
-| John Doe | `johndoe@test.com` | Voluntario |
+| Nombre | Correo | Tipo de perfil | Ciudad |
+|---|---|---|---|
+| Ana Martínez | `ana.martinez@heartcoin-demo.mx` | Voluntario | Durango |
+| Carlos López | `carlos.lopez@heartcoin-demo.mx` | Emprendedor | Guadalajara |
+| Sofía Hernández | `sofia.hernandez@heartcoin-demo.mx` | Estudiante | Monterrey |
+| Diego Ramírez | `diego.ramirez@heartcoin-demo.mx` | Profesional | Puebla |
+| Valeria Torres | `valeria.torres@heartcoin-demo.mx` | Investigador | Mérida |
 
 ---
 
 ## Organización (`organization_profiles`)
 
-Autoras de las 51 iniciativas de ejemplo (repartidas entre las 6 cuentas, round-robin).
+Autoras de **200 iniciativas** (40 por organización: 10 de cada categoría — Voluntariado, Crowdfunding, Social, Ahorro —, todas en `status = 'activa'`).
 
-| Organización | Correo | Tipo | Área de impacto |
-|---|---|---|---|
-| Fundación Raíces Verdes | `contacto@fundacionraicesverdes.org` | Asociación Civil | Medio ambiente |
-| Fundación Puente Solidario | `contacto@fundacionpuentesolidario.mx` | Fundación | Pobreza |
-| Manos que Ayudan A.C. | `contacto@manosqueayudanac.mx` | Asociación Civil | Salud |
-| EcoRaíces México | `contacto@ecoraicesmexico.mx` | ONG | Medio ambiente |
-| Cooperativa Semilla Digna | `contacto@cooperativasemilladigna.mx` | Cooperativa | Educación |
-| Impulso Comunitario A.C. | `contacto@impulsocomunitarioac.mx` | Asociación Civil | Derechos humanos |
+| Organización | Correo | Tipo | Área de impacto | Ciudad |
+|---|---|---|---|---|
+| Raíces Verdes A.C. | `contacto@raicesverdes-demo.mx` | Asociación Civil | Medio ambiente | Durango |
+| Manos Unidas MX | `contacto@manosunidas-demo.mx` | Fundación | Pobreza | Ciudad de México |
+| Futuro Educativo | `contacto@futuroeducativo-demo.mx` | ONG | Educación | Puebla |
+| Salud Para Todos | `contacto@saludparatodos-demo.mx` | Fundación | Salud | Guadalajara |
+| EcoAcción | `contacto@ecoaccion-demo.mx` | Organización Internacional | Medio ambiente | Monterrey |
 
 ---
 
 ## Empresa (`company_profiles`)
 
-Entre las 3 hay **20 beneficios** y **20 servicios** de ejemplo publicados y activos (mezcla de tipo costo/descuento/beca y cashback), listos para explorar y canjear desde la billetera o desde Explorar → Servicios.
+Entre las 5 hay **25 beneficios** (locales de comida, supermercados y tiendas ficticias, repartidos en 10 ciudades de México) y **25 servicios** (consultoría, tecnología, diseño, legal, marketing, capacitación), 5 de cada uno vez marcados como "destacado".
 
-| Empresa | Correo | Industria | Empleados | Objetivo principal | Beneficios | Servicios |
-|---|---|---|---|---|---|---|
-| Grupo VEQ | `contacto@grupoveq.mx` | Servicios | 201-500 | Responsabilidad Social Empresarial (RSE) | 7 | 7 |
-| TechSolve | `contacto@techsolve.mx` | Tecnología | 51-200 | Voluntariado corporativo | 7 | 7 |
-| Vértice Retail | `contacto@verticeretail.mx` | Retail | 501-1000 | Marketplace de impacto | 6 | 6 |
+| Empresa | Correo | Industria | Empleados | Objetivo principal | Ciudad |
+|---|---|---|---|---|---|
+| Grupo Sabor MX | `contacto@gruposabor-demo.mx` | Retail | 201-500 | Responsabilidad Social Empresarial (RSE) | Ciudad de México |
+| Mercado Fresco | `contacto@mercadofresco-demo.mx` | Retail | 501-1000 | ESG | Guadalajara |
+| Moda Express | `contacto@modaexpress-demo.mx` | Retail | 51-200 | Marketplace de impacto | Monterrey |
+| TecnoDigital | `contacto@tecnodigital-demo.mx` | Tecnología | 11-50 | Medición de impacto | Querétaro |
+| Casa y Comodidad | `contacto@casaycomodidad-demo.mx` | Retail | 201-500 | Donaciones | León |
 
-Para el listado completo y actualizado, consulta `beneficios`/`servicios` filtrando por `company_name` — con 20 de cada uno, dejó de tener sentido mantener la lista aquí a mano (se desactualiza rápido).
+Para el listado completo de beneficios/servicios, consulta las tablas `beneficios`/`servicios` filtrando por `company_name` — con 25 de cada uno, no tiene sentido mantener el detalle línea por línea aquí (se desactualiza rápido).
 
 ---
 
 ## Notas
 
-- Todas las cuentas de demo fueron creadas directo por la Admin API de Supabase (no a través del formulario de registro de la app), con el correo ya confirmado.
-- Este archivo refleja el estado de la base al momento de escribirlo; si se crean o eliminan cuentas después, puede quedar desactualizado — para el estado real, consulta `personal_profiles` / `organization_profiles` / `company_profiles` directamente.
+- Este archivo refleja el estado de la base al momento de escribirlo (31 de julio de 2026); si se crean o eliminan cuentas después, puede quedar desactualizado — para el estado real, consulta `personal_profiles` / `organization_profiles` / `company_profiles` directamente.
+- Las imágenes de las publicaciones fueron subidas realmente a MediaAAS a través de la Edge Function `upload-media` (no son URLs de placeholder embebidas directo en la base de datos).
+- Todas las iniciativas se crearon directamente con `status = 'activa'` (saltando la fase de votación), para que la demo muestre contenido funcional de inmediato.

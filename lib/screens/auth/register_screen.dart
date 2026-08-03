@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import '../../services/auth_service.dart';
-import '../../services/original_auth_service.dart';
+import '../../services/common/auth_service.dart';
+import '../../services/common/original_auth_service.dart';
 import 'login_screen.dart';
 import 'verify_email_screen.dart';
 

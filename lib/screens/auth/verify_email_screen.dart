@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../services/auth_service.dart';
-import '../../services/original_auth_service.dart';
+import '../../services/common/auth_service.dart';
+import '../../services/common/original_auth_service.dart';
 import 'login_screen.dart';
 
 /// Bloquea el paso a la app hasta que el usuario confirme el código de

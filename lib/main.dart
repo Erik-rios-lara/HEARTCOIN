@@ -4,25 +4,25 @@ import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // 1. Importamos la librería de Supabase
 import 'screens/onboarding/onboarding_screen.dart';
-import 'screens/home_people_screen.dart';
-import 'screens/home_organization_screen.dart';
-import 'screens/home_company_screen.dart';
-import 'screens/certificados_screen.dart';
-import 'screens/mis_acciones_screen.dart';
-import 'screens/create_post_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/explore_screen.dart';
-import 'screens/votaciones_screen.dart';
-import 'screens/iniciativas_ahorro_screen.dart';
-import 'screens/iniciativas_social_screen.dart';
-import 'screens/settings_screen.dart';
-import 'screens/votaciones_monitor_screen.dart';
-import 'screens/community_screen.dart';
-import 'screens/org_iniciativas_screen.dart';
-import 'screens/company_beneficios_screen.dart';
-import 'screens/wallet_screen.dart';
-import 'services/text_scale_controller.dart';
-import 'services/location_preference_controller.dart';
+import './screens/personal/home_people_screen.dart';
+import './screens/organizacion/home_organization_screen.dart';
+import './screens/empresa/home_company_screen.dart';
+import './screens/personal/certificados_screen.dart';
+import './screens/personal/mis_acciones_screen.dart';
+import './screens/personal/create_post_screen.dart';
+import './screens/personal/profile_screen.dart';
+import './screens/personal/explore_screen.dart';
+import './screens/personal/votaciones_screen.dart';
+import './screens/personal/iniciativas_ahorro_screen.dart';
+import './screens/personal/iniciativas_social_screen.dart';
+import './screens/common/settings_screen.dart';
+import './screens/organizacion/votaciones_monitor_screen.dart';
+import './screens/organizacion/community_screen.dart';
+import './screens/organizacion/org_iniciativas_screen.dart';
+import './screens/empresa/company_beneficios_screen.dart';
+import './screens/personal/wallet_screen.dart';
+import './services/common/text_scale_controller.dart';
+import './services/common/location_preference_controller.dart';
 
 void main() async {
   // 2. Convertimos el main en una función asíncrona (async)

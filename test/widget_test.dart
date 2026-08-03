@@ -5,7 +5,7 @@ import 'package:heartcoin/screens/onboarding/onboarding_screen.dart';
 import 'package:heartcoin/screens/home/home_screen.dart';
 import 'package:heartcoin/screens/auth/login_screen.dart';
 import 'package:heartcoin/screens/auth/register_screen.dart';
-import 'package:heartcoin/widgets/iniciativa_widgets.dart';
+import 'package:heartcoin/widgets/common/iniciativa_widgets.dart';
 
 /// Envuelve un widget de pantalla en un MaterialApp mínimo, igual que lo
 /// vería en producción pero sin depender de Supabase.initialize() (que

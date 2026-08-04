@@ -126,6 +126,7 @@ class _ServicioDetailScreenState extends State<ServicioDetailScreen> {
     final latitude = (_servicio['latitude'] as num?)?.toDouble();
     final longitude = (_servicio['longitude'] as num?)?.toDouble();
     final location = _servicio['location'] as String?;
+    final imageUrl = _servicio['image_url'] as String?;
 
     return Scaffold(
       backgroundColor: AppColors.gris100,
@@ -138,6 +139,17 @@ class _ServicioDetailScreenState extends State<ServicioDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
+          if (imageUrl != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: SizedBox(
+                height: 180,
+                width: double.infinity,
+                child: Image.network(imageUrl, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../services/common/current_location.dart';
+import '../../services/common/media_service.dart';
 import '../../services/common/servicio_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/common/image_picker_field.dart';
 import '../../widgets/common/location_capture_field.dart';
 
 const _categoryOptions = [
@@ -37,6 +39,7 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
   final _maxRedemptionsController = TextEditingController();
   LocationCaptureResult? _location;
   bool _destacado = false;
+  PickedImage? _pickedImage;
 
   bool get _isCashback => _pricingType == 'cashback';
 
@@ -76,6 +79,15 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
 
     setState(() => _isSubmitting = true);
     try {
+      String? imageUrl;
+      if (_pickedImage != null) {
+        final uploaded = await MediaService.instance.upload(
+          bytes: _pickedImage!.bytes,
+          fileName: _pickedImage!.fileName,
+        );
+        imageUrl = uploaded.url;
+      }
+
       await ServicioService.instance.createServicio(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -88,6 +100,7 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
         latitude: _location?.latitude,
         longitude: _location?.longitude,
         destacado: _destacado,
+        imageUrl: imageUrl,
       );
 
       if (!mounted) return;
@@ -199,6 +212,12 @@ class _CreateServicioScreenState extends State<CreateServicioScreen> {
             controller: _maxRedemptionsController,
             hint: 'Opcional, ej. 50',
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+
+          const _FieldLabel('Imagen (opcional)'),
+          ImagePickerField(
+            onChanged: (picked) => setState(() => _pickedImage = picked),
           ),
           const SizedBox(height: 16),
 

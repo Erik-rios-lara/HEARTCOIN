@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../services/common/beneficio_service.dart';
 import '../../services/common/current_location.dart';
+import '../../services/common/media_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/common/image_picker_field.dart';
 import '../../widgets/common/location_capture_field.dart';
 
 class _BenefitTypeOption {
@@ -38,6 +40,7 @@ class _CreateBeneficioScreenState extends State<CreateBeneficioScreen> {
   DateTime? _expiresAt;
   LocationCaptureResult? _location;
   bool _destacado = false;
+  PickedImage? _pickedImage;
 
   bool get _isCashback => _benefitType == 'cashback';
 
@@ -99,6 +102,15 @@ class _CreateBeneficioScreenState extends State<CreateBeneficioScreen> {
 
     setState(() => _isSubmitting = true);
     try {
+      String? imageUrl;
+      if (_pickedImage != null) {
+        final uploaded = await MediaService.instance.upload(
+          bytes: _pickedImage!.bytes,
+          fileName: _pickedImage!.fileName,
+        );
+        imageUrl = uploaded.url;
+      }
+
       await BeneficioService.instance.createBeneficio(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -114,6 +126,7 @@ class _CreateBeneficioScreenState extends State<CreateBeneficioScreen> {
         latitude: _location?.latitude,
         longitude: _location?.longitude,
         destacado: _destacado,
+        imageUrl: imageUrl,
       );
 
       if (!mounted) return;
@@ -230,6 +243,12 @@ class _CreateBeneficioScreenState extends State<CreateBeneficioScreen> {
 
           const _FieldLabel('Fecha de vencimiento'),
           _DateField(date: _expiresAt, onTap: _pickExpiresAt),
+          const SizedBox(height: 16),
+
+          const _FieldLabel('Imagen (opcional)'),
+          ImagePickerField(
+            onChanged: (picked) => setState(() => _pickedImage = picked),
+          ),
           const SizedBox(height: 16),
 
           const _FieldLabel('Ubicación (opcional)'),

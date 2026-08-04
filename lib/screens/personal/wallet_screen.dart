@@ -789,6 +789,7 @@ class _ServicioCard extends StatelessWidget {
     final title = servicio['title'] as String? ?? 'Servicio';
     final description = servicio['description'] as String?;
     final category = servicio['category'] as String?;
+    final imageUrl = servicio['image_url'] as String?;
     final isCashback = servicio['pricing_type'] == 'cashback';
     final hcCost = (servicio['hc_cost'] as num?)?.toInt();
     final hcReward = (servicio['hc_reward'] as num?)?.toInt();
@@ -822,25 +823,29 @@ class _ServicioCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(18),
                   ),
-                  child: Container(
+                  child: SizedBox(
                     height: 90,
                     width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.primarioRojo,
-                          AppColors.rojoOscuro1,
-                        ],
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      categoryIcon ?? Icons.storefront,
-                      color: Colors.white.withValues(alpha: 0.85),
-                      size: 32,
-                    ),
+                    child: imageUrl != null
+                        ? Image.network(imageUrl, fit: BoxFit.cover)
+                        : Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.primarioRojo,
+                                  AppColors.rojoOscuro1,
+                                ],
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              categoryIcon ?? Icons.storefront,
+                              color: Colors.white.withValues(alpha: 0.85),
+                              size: 32,
+                            ),
+                          ),
                   ),
                 ),
                 if (category != null && category.isNotEmpty)
